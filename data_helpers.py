@@ -27,10 +27,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 					index += 1
 					my_dictionary["word_index"][word] = index
 					my_dictionary["index_word"][index] = word
-					star = False
-					if "Star" in word:
-						star = True
-						print("\t", word, my_dictionary["word_index"][word])
 					
 					# FOR UNKNOWN WORDS     
 					if "**" in word:
@@ -40,8 +36,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 							index += 1
 							my_dictionary["word_index"][word] = index
 							my_dictionary["index_word"][index] = word
-							if star:
-								print("\t\t", word, my_dictionary["word_index"][word])
 
 				else:        
 					# FOR UNKNOWN WORDS
