@@ -46,28 +46,6 @@ class CNNModel:
 		reshape = Reshape((config["SEQUENCE_SIZE"],config["EMBEDDING_DIM"],1))(embedding)
 		print("reshape : ", reshape.shape)
 
-		"""
-		# ------------------------------------------------------
-		# MULTI LAYERS CONVOLUTION/DECONVOLUTION (FOR CNN MODEL)
-		# ------------------------------------------------------
-		conv_array = []
-		maxpool_array = []
-		for filter in config["FILTER_SIZES"]:
-			conv = Conv2D(config["NB_FILTERS"], filter, EMBEDDING_DIM, border_mode='valid', init='normal', activation='relu', dim_ordering='tf')(reshape)	
-			maxpool = MaxPooling2D(pool_size=(params_obj.inp_length - filter + 1, 1), strides=(1,1), border_mode='valid', dim_ordering='tf')(conv)
-			conv_array.append(conv)
-			maxpool_array.append(maxpool)			
-						
-		deconv = Conv2DTranspose(1, config["FILTER_SIZES"][0], EMBEDDING_DIM, border_mode='valid', init='normal', activation='relu', dim_ordering='tf')(conv_array[0])
-		deconv_model = Model(input=inputs, output=deconv)
-
-		if len(config["FILTER_SIZES"]) >= 2:
-			merged_tensor = merge(maxpool_array, mode='concat', concat_axis=1)
-			flatten = Flatten()(merged_tensor)
-		else:
-			flatten = Flatten()(maxpool_array[0])
-		"""
-
 		# ---------------------------------------
 		# CONVOLUTION (FOR CNN+LSTM MODEL)
 		# ---------------------------------------
@@ -102,7 +80,10 @@ class CNNModel:
 		# ----------
 		# Select input as "reshape" to use CONVOLUTION
 		# Select input as "embedding" to drop CONVOLUTION
-		lstm = LSTM(100, return_sequences=True)(reshape) #(embedding) <=== Select here with or without convolution
+		if (config["ENABLE_CONV"]):
+			lstm = LSTM(config["LSTM_SIZE"], return_sequences=True)(reshape) #(embedding) <=== Select here with or without convolution
+		else:
+			lstm = LSTM(config["LSTM_SIZE"], return_sequences=True)(embedding)
 		print("lstm :", lstm.shape)
 
 		# ---------------
@@ -122,7 +103,7 @@ class CNNModel:
 		attention_model = Model(input=inputs, output=attention)
 
 		# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
-		attention = RepeatVector(100)(attention)
+		attention = RepeatVector(config["LSTM_SIZE"])(attention)
 		print("RepeatVector :", attention.shape)
 		
 		attention = Permute([2, 1])(attention)
@@ -140,7 +121,10 @@ class CNNModel:
 		# -------------
 		# Select input as "sent_representation" to use LSTM
 		# Select input as "maxpool" to drop LSTM
-		dropout = Dropout(config["DROPOUT_VAL"])(sent_representation)
+		if config["ENABLE_LSTM"]:
+			dropout = Dropout(config["DROPOUT_VAL"])(sent_representation)
+		else:
+			dropout = Dropout(config["DROPOUT_VAL"])(maxpool)
 		print("Dropout :", dropout.shape)
 
 		# -----------------

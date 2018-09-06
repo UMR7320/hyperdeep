@@ -95,7 +95,11 @@ def create_tg_vectors(corpus_file, vectors_file, config):
             vectors[word] = v
             
             # FOR UNKNOWN WORDS 
-            vectors[args[1] + "**" + args[1] + "**" + args[1]] = args[1] + "**" + args[1] + "**" + args[1] + " " + "0 " * int(config["EMBEDDING_DIM"]/3) + " " + vectors_tg[1][args[1]] + " " + "0 " * int(config["EMBEDDING_DIM"]/3) + "\n"
+            try:
+                vectors[args[1] + "**" + args[1] + "**" + args[1]] = args[1] + "**" + args[1] + "**" + args[1] + " " + vectors_tg[1][args[1]] + " " + vectors_tg[1][args[1]] + " " + vectors_tg[1][args[1]] + "\n"
+            except:
+                pass # CASE OF RARE WORD (MIN_COUNT > 0)
+
 
     voc_size = len(vectors.keys())
     vectors = list(vectors.values())
