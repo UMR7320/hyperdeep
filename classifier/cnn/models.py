@@ -15,9 +15,9 @@ from keras.layers import RepeatVector
 from keras.layers import Permute
 from keras.layers import Lambda
 from keras.layers import Conv1D, Conv2D, Conv2DTranspose, MaxPooling1D, MaxPooling2D, GlobalMaxPooling1D,  Embedding, Reshape
-from keras.layers import Input, Embedding, LSTM, Dense, merge
-from keras.legacy.layers import Merge
+from keras.layers import Input, Embedding, LSTM, Dense
 from keras.utils import np_utils
+from keras.layers import multiply
 
 #from config import EMBEDDING_DIM, config["NB_FILTERS"], config["FILTER_SIZES"], DROPOUT_VAL
 
@@ -50,20 +50,20 @@ class CNNModel:
 		# CONVOLUTION (FOR CNN+LSTM MODEL)
 		# ---------------------------------------
 		filter = config["FILTER_SIZES"]
-		conv = Conv2D(config["NB_FILTERS"], filter, config["EMBEDDING_DIM"], border_mode='valid', init='normal', activation='relu', dim_ordering='tf')(reshape)	
+		conv = Conv2D(config["NB_FILTERS"], (filter, config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape)	
 		print("convolution :", conv.shape)
 		
 		# -----------------------------------------
 		# DECONVOLUTION (FOR CNN+LSTM MODEL)
 		# -----------------------------------------
-		deconv = Conv2DTranspose(1, filter, config["EMBEDDING_DIM"], border_mode='valid', init='normal', activation='relu', dim_ordering='tf')(conv)
+		deconv = Conv2DTranspose(1, (filter, config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv)
 		print("deconvolution :", deconv.shape)
-		deconv_model = Model(input=inputs, output=deconv)
+		deconv_model = Model(inputs=inputs, outputs=deconv)
 
 		# --------------------
 		# ! ONLY FOR CNN MODEL
 		# --------------------	
-		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1,1), border_mode='valid', dim_ordering='tf')(conv)
+		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1,1), padding='valid', data_format='channels_last')(conv)
 		print("MaxPooling2D :", maxpool.shape)
 		maxpool = Flatten()(maxpool)
 		print("flatten :", maxpool.shape)
@@ -100,7 +100,7 @@ class CNNModel:
 		print("Activation :", attention.shape)
 
 		# Observe attention here
-		attention_model = Model(input=inputs, output=attention)
+		attention_model = Model(inputs=inputs, outputs=attention)
 
 		# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
 		attention = RepeatVector(config["LSTM_SIZE"])(attention)
@@ -110,8 +110,8 @@ class CNNModel:
 		print("Permute :", attention.shape)
 
 		# apply the attention		
-		sent_representation = merge([lstm, attention], mode='mul')
-		print("merge :", sent_representation.shape)
+		sent_representation = multiply([lstm, attention])
+		print("Multiply :", sent_representation.shape)
 		
 		sent_representation = Lambda(lambda xin: K.sum(xin, axis=1))(sent_representation)
 		print("Lambda :", sent_representation.shape)
@@ -135,7 +135,7 @@ class CNNModel:
 		print("output :", output.shape)
 
 		# this creates a model that includes
-		model = Model(input=inputs, output=output)
+		model = Model(inputs=inputs, outputs=output)
 
 		op = optimizers.Adam(lr=config["LEARNING_RATE"], beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 		#op = optimizers.Adam(lr=1e-3)
