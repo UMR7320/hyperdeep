@@ -19,22 +19,45 @@ class PreProcessing:
 		self.corpus_file = corpus_file
 		
 		label_dic = {}
-		labels = []
-		texts = []
+		label_count = {}
+		labels_tmp = []
+		texts_tmp = []
 		
-		# Read text and detect classes/labels
+		# open corpus file
 		self.num_classes = 0
 		f = open(corpus_file, "r")
-		for text in f.readlines():
+		lines = f.readlines()
+		f.close()
+
+		# shuffle data
+		random.shuffle(lines)
+
+		# Read text and detect classes/labels
+		for text in lines:
 			label = text.split("__ ")[0].replace("__", "")
 			text = text.replace("__" + label + "__ ", "")
 			if label not in label_dic.keys():
 				label_dic[label] = self.num_classes
 				self.num_classes += 1
 			label_int = label_dic[label]
-			labels += [label_int]
-			texts += [text]
-		f.close()
+			labels_tmp += [label_int]
+			texts_tmp += [text]
+			label_count[label_int] = label_count.get(label_int, 0) + 1
+
+		# normalize number size of corpus
+		print(label_count)
+		print(len(labels_tmp))
+		min_label_count = min(label_count.values())
+		label_count = {}
+		labels = []
+		texts = []
+		for i in range(len(texts_tmp)):
+			label_int = labels_tmp[i]
+			label_count[label_int] = label_count.get(label_int, 0) + 1
+			if label_count[label_int] <= min_label_count:
+				texts += [texts_tmp[i]]
+				labels += [labels_tmp[i]]
+		print(len(labels))
 		
 		print("DETECTED LABELS :")
 		#print(label_dic)
@@ -52,11 +75,13 @@ class PreProcessing:
 		print('Shape of data tensor:', data.shape)
 		print('Shape of label tensor:', labels.shape)
 
+		# shuffle data
+		#indices = np.arange(data.shape[0])
+		#np.random.shuffle(indices)
+		#data = data[indices]
+		#labels = labels[indices]
+
 		# split the data into a training set and a validation set
-		indices = np.arange(data.shape[0])
-		np.random.shuffle(indices)
-		data = data[indices]
-		labels = labels[indices]
 		nb_validation_samples = int(config["VALIDATION_SPLIT"] * data.shape[0])
 
 		self.x_train = data[:-nb_validation_samples]
