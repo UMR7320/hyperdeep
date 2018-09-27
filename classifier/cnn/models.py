@@ -50,20 +50,24 @@ class CNNModel:
 		# CONVOLUTION (FOR CNN+LSTM MODEL)
 		# ---------------------------------------
 		filter = config["FILTER_SIZES"]
-		conv = Conv2D(config["NB_FILTERS"], (filter, config["EMBEDDING_DIM"]), strides=(1, int(config["EMBEDDING_DIM"]/3)), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape)	
+		if config["TG"]:
+			conv_width = int(config["EMBEDDING_DIM"]/3)
+		else:
+			conv_width = config["EMBEDDING_DIM"]
+		conv = Conv2D(config["NB_FILTERS"], (filter, conv_width), strides=(1, conv_width), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape)	
 		print("convolution :", conv.shape)
 		
 		# -----------------------------------------
 		# DECONVOLUTION (FOR CNN+LSTM MODEL)
 		# -----------------------------------------
-		deconv = Conv2DTranspose(1, (filter, config["EMBEDDING_DIM"]), strides=(1, int(config["EMBEDDING_DIM"]/3)), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv)
+		deconv = Conv2DTranspose(1, (filter, conv_width), strides=(1, conv_width), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv)
 		print("deconvolution :", deconv.shape)
 		deconv_model = Model(inputs=inputs, outputs=deconv)
 
 		# --------------------
 		# ! ONLY FOR CNN MODEL
 		# --------------------	
-		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1, int(config["EMBEDDING_DIM"]/3)), padding='valid', data_format='channels_last')(conv)
+		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1, 1), padding='valid', data_format='channels_last')(conv)
 		print("MaxPooling2D :", maxpool.shape)
 		maxpool = Flatten()(maxpool)
 		print("flatten :", maxpool.shape)
