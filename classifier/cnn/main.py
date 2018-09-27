@@ -190,38 +190,87 @@ def predict(text_file, model_file, config, vectors_file):
 		sentence = {}
 		sentence["sentence"] = ""
 		sentence["prediction"] = predictions[sentence_nb].tolist()
-		for i in range(len(x_data[sentence_nb])):
-			word = ""
-			index = x_data[sentence_nb][i]
-			try:
-				word = my_dictionary["index_word"][index]
-			except:
-				word = "PAD"
 
-			# READ DECONVOLUTION 
-			deconv_value = deconv[sentence_nb][i]
-			
-			if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
-				attention_value = 0
-			else:
-				attention_value = attentions[sentence_nb][i-1]
-			if "**" in word:
+		# ------ LEMMATIZED VERSION -------
+		if config["TG"]:
+
+			# Normalize deconv values
+			forme_values = [0] * len(x_data[sentence_nb])
+			code_values = [0] * len(x_data[sentence_nb])
+			lemme_values = [0] * len(x_data[sentence_nb])
+			for i in range(len(x_data[sentence_nb])):
+				
 				j = int(config["EMBEDDING_DIM"]/3)
+				deconv_value = deconv[sentence_nb][i]
+
+				# forme
+				forme_values[i] = float(np.sum(deconv_value[:j]))
+
+				# code
+				code_values[i] = float(np.sum(deconv_value[j:j+j]))
+					
+				# lemme
+				lemme_values[i] = float(np.sum(deconv_value[-j:]))
+			
+			ratio_forme = 10 / (sum(forme_values) / float(len(forme_values)))
+			ratio_code = 10 / (sum(code_values) / float(len(code_values)))
+			ratio_lemme = 10 / (sum(lemme_values) / float(len(lemme_values)))
+
+			print(ratio_forme, ratio_code, ratio_lemme)
+
+			# Create word entry
+			for i in range(len(x_data[sentence_nb])):
+				index = x_data[sentence_nb][i]
+				word = my_dictionary["index_word"].get(index, "PAD")
+
+				# READ DECONVOLUTION 
+				deconv_value = deconv[sentence_nb][i]
+				
+				# READ ATTENTION 
+				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
+					attention_value = 0
+				else:
+					attention_value = attentions[sentence_nb][i-1]
+
+				# WRITE WORD ENTRY
 				word_args = word.split("**")
-				# deconvolution word
-				word = word_args[0] + "*" + str(float(np.sum(deconv_value[:j])))
+				# deconvolution forme
+				word = word_args[0] + "*" + str(forme_values[i]*ratio_forme)
 				# deconvolution code
-				word += "**" + word_args[1] + "*" + str(float(np.sum(deconv_value[j:j+j])))
-				# deconvolution lemme
-				word += "**" + word_args[2] + "*" + str(float(np.sum(deconv_value[-j:])))
-				# attention
+				try:
+					word += "**" + word_args[1] + "*" + str(code_values[i]*ratio_code)
+					# deconvolution lemme
+					word += "**" + word_args[2] + "*" + str(lemme_values[i]*ratio_lemme)
+					# attention
+				except:
+					pass # PAD VALUE
 				word += "*" + str(float(attention_value))
-			else:
+
+				sentence["sentence"] += word + " "
+		
+		# ------ STANDARD VERSION -------
+		else:
+			for i in range(len(x_data[sentence_nb])):
+				index = x_data[sentence_nb][i]
+				word = my_dictionary["index_word"].get(index, "PAD")
+
+				# READ DECONVOLUTION 
+				deconv_value = deconv[sentence_nb][i]
+				
+				# READ ATTENTION 
+				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
+					attention_value = 0
+				else:
+					attention_value = attentions[sentence_nb][i-1]
+
+				# WRITE WORD ENTRY
 				# deconvolution
 				word = word + "*" + str(float(np.sum(deconv_value)))
 				# attention
 				word += "*" + str(float(attention_value))
-			sentence["sentence"] += word + " "
+
+				sentence["sentence"] += word + " "
+
 		result.append(sentence)
 
 	return result
