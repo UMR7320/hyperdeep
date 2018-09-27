@@ -67,7 +67,7 @@ class CNNModel:
 		# --------------------
 		# ! ONLY FOR CNN MODEL
 		# --------------------	
-		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1, 1), padding='valid', data_format='channels_last')(conv)
+		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1, conv_width), padding='valid', data_format='channels_last')(conv)
 		print("MaxPooling2D :", maxpool.shape)
 		maxpool = Flatten()(maxpool)
 		print("flatten :", maxpool.shape)
