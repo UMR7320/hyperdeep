@@ -212,9 +212,18 @@ def predict(text_file, model_file, config, vectors_file):
 				# lemme
 				lemme_values[i] = float(np.sum(deconv_value[-j:]))
 			
-			ratio_forme = 10 / (sum(forme_values) / float(len(forme_values)))
-			ratio_code = 10 / (sum(code_values) / float(len(code_values)))
-			ratio_lemme = 10 / (sum(lemme_values) / float(len(lemme_values)))
+			try:
+				ratio_forme = 10 / (sum(forme_values) / float(len(forme_values)))
+			except:
+				ratio_forme = 1
+			try:
+				ratio_code = 10 / (sum(code_values) / float(len(code_values)))
+			except:
+				ratio_code = 1
+			try:
+				ratio_lemme = 10 / (sum(lemme_values) / float(len(lemme_values)))
+			except:
+				ratio_lemme = 1
 
 			print(ratio_forme, ratio_code, ratio_lemme)
 
