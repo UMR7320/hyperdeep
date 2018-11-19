@@ -231,6 +231,10 @@ def predict(text_file, model_file, config, vectors_file):
 			except:
 				ratio_lemme = 1
 
+			ratio_forme = 1
+			ratio_code = 1
+			ratio_lemme = 1
+
 			print(ratio_forme, ratio_code, ratio_lemme)
 
 			# Create word entry
