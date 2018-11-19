@@ -91,13 +91,17 @@ if __name__ == '__main__':
                 config = json.loads(open(corpus_file + ".config", "r").read())
             except:
                 config = json.loads(open("config.json", "r").read())
+
+            # TRAIN
+            scores = train(corpus_file, model_file, config)
+            config["loss"] = scores[0]*100 # Loss
+            config["acc"] = scores[1]*100 # Accuracy
+
             # SAVE CONFIG FILE
             config_json = open(model_file + ".config", "w")
             config_json.write(json.dumps(config))
             config_json.close()
 
-            # TRAIN
-            train(corpus_file, model_file, config)
 
         except:
             raise

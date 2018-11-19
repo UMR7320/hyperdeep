@@ -131,22 +131,31 @@ class CNNModel:
 			dropout = Dropout(config["DROPOUT_VAL"])(maxpool)
 		print("Dropout :", dropout.shape)
 
+
+		# -----------------
+		# HIDDEN DENSE LAYER
+		# -----------------		
+		hidden_dense = Dense(config["DENSE_LAYER_SIZE"],kernel_initializer='uniform',activation='relu')(dropout)
+
 		# -----------------
 		# FINAL DENSE LAYER
 		# -----------------
-		hidden_dense = Dense(config["DENSE_LAYER_SIZE"],kernel_initializer='uniform',activation='relu')(dropout)
-		output = Dense(config["num_classes"], activation='softmax')(hidden_dense)
+		if config["num_classes"] == 2:
+			crossentropy = 'binary_crossentropy'
+			output_acivation = 'sigmoid'
+		else:
+			crossentropy = 'categorical_crossentropy'
+			output_acivation = 'softmax'
+
+		output = Dense(config["num_classes"], activation=output_acivation)(hidden_dense)
 		print("output :", output.shape)
 
-		# this creates a model that includes
+		# -----------------
+		# COMPILE THE MODEL
+		# -----------------
 		model = Model(inputs=inputs, outputs=output)
-
 		op = optimizers.Adam(lr=config["LEARNING_RATE"], beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-		#op = optimizers.Adam(lr=1e-3)
-		if config["num_classes"] == 2:
-			model.compile(optimizer=op, loss='binary_crossentropy', metrics=['accuracy'])
-		else:
-			model.compile(optimizer=op, loss='categorical_crossentropy', metrics=['accuracy'])
+		model.compile(optimizer=op, loss=crossentropy, metrics=['accuracy'])
 
 		print("-"*20)
 		print("MODEL READY")
