@@ -218,7 +218,7 @@ def predict(text_file, model_file, config, vectors_file):
 				# lemme
 				lemme_values[i] = float(np.sum(deconv_value[-j:]))
 
-			print(ratio_forme, ratio_code, ratio_lemme)
+			#print(ratio_forme, ratio_code, ratio_lemme)
 
 			# Create word entry
 			for i in range(len(x_data[sentence_nb])):
