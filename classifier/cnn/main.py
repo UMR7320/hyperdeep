@@ -217,8 +217,21 @@ def predict(text_file, model_file, config, vectors_file):
 					
 				# lemme
 				lemme_values[i] = float(np.sum(deconv_value[-j:]))
+			
+			try:
+				ratio_forme = 10 / (sum(forme_values) / float(len(forme_values)))
+			except:
+				ratio_forme = 1
+			try:
+				ratio_code = 10 / (sum(code_values) / float(len(code_values)))
+			except:
+				ratio_code = 1
+			try:
+				ratio_lemme = 10 / (sum(lemme_values) / float(len(lemme_values)))
+			except:
+				ratio_lemme = 1
 
-			#print(ratio_forme, ratio_code, ratio_lemme)
+			print(ratio_forme, ratio_code, ratio_lemme)
 
 			# Create word entry
 			for i in range(len(x_data[sentence_nb])):
@@ -237,12 +250,12 @@ def predict(text_file, model_file, config, vectors_file):
 				# WRITE WORD ENTRY
 				word_args = word.split("**")
 				# deconvolution forme
-				word = word_args[0] + "*" + str(forme_values[i])
+				word = word_args[0] + "*" + str(forme_values[i]*ratio_forme)
 				# deconvolution code
 				try:
-					word += "**" + word_args[1] + "*" + str(code_values[i])
+					word += "**" + word_args[1] + "*" + str(code_values[i]*ratio_code)
 					# deconvolution lemme
-					word += "**" + word_args[2] + "*" + str(lemme_values[i])
+					word += "**" + word_args[2] + "*" + str(lemme_values[i]*ratio_lemme)
 					# attention
 				except:
 					pass # PAD VALUE
