@@ -98,14 +98,17 @@ class PreProcessing:
 				# words not found in embedding index will be all-zeros.
 				embedding_matrix[i] = embedding_vector
 
-		self.embedding_matrix = embedding_matrix
+		self.embedding_matrix = [embedding_matrix]
 
 def train(corpus_file, model_file, config):
 
 	# preprocess data
 	preprocessing = PreProcessing()
 	preprocessing.loadData(corpus_file, model_file, config, create_dictionnary = True)
-	preprocessing.loadEmbeddings(model_file, config)
+	if config["SG"] != -1:
+		preprocessing.loadEmbeddings(model_file, config)
+	else:
+		preprocessing.embedding_matrix = None
 	
 	# Establish params
 	config["num_classes"] = preprocessing.num_classes 
@@ -150,7 +153,7 @@ def predict(text_file, model_file, config, vectors_file):
 	# preprocess data
 	preprocessing = PreProcessing()
 	preprocessing.loadData(text_file, model_file, config, create_dictionnary = False)
-	preprocessing.loadEmbeddings(model_file, config, vectors_file)
+	#preprocessing.loadEmbeddings(model_file, config, vectors_file)
 	
 	# load and predict
 	x_data = np.concatenate((preprocessing.x_train,preprocessing.x_val), axis=0)

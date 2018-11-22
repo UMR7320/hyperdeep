@@ -38,8 +38,8 @@ class CNNModel:
 			config["vocab_size"]+1, # due to mask_zero
 			config["EMBEDDING_DIM"],
 			input_length=config["SEQUENCE_SIZE"],
-			weights=[weight],
-			trainable=True
+			weights=weight,
+			trainable=weight==None
 		)(inputs)
 		print("embedding : ", embedding.shape)
 		
