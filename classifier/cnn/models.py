@@ -39,7 +39,7 @@ class CNNModel:
 			config["EMBEDDING_DIM"],
 			input_length=config["SEQUENCE_SIZE"],
 			weights=weight,
-			trainable=weight==None
+			trainable=True
 		)(inputs)
 		print("embedding : ", embedding.shape)
 		
