@@ -279,7 +279,10 @@ def predict(text_file, model_file, config, vectors_file):
 				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
 					attention_value = 0
 				else:
-					attention_value = attentions[sentence_nb][i-1]
+					try:
+						attention_value = attentions[sentence_nb][i-1]
+					except: # BUG WITH FILTER_SIZE > 3
+						attention_value = 0
 
 				# WRITE WORD ENTRY
 				# deconvolution
