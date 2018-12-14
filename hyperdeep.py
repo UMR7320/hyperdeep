@@ -60,7 +60,6 @@ if __name__ == '__main__':
     if command == "nn": # nearest neighbors
         try:
             args = get_args()
-            print(args)
             model = args[2]
             word = args[3]
             most_similar_list = get_most_similar(word, model)

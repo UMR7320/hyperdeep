@@ -135,9 +135,7 @@ FIND MOST SIMILAR WORD
 """
 def get_most_similar(word, vectors_file):
     w2v = get_w2v(vectors_file)
-    print(w2v.wv.vocab)
     most_similar = w2v.most_similar(positive=[word])
-    print(most_similar)
     return most_similar
 
 
