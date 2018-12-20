@@ -154,7 +154,7 @@ def train(corpus_file, model_file, config):
 			deconv_data[classe][word] += float(np.sum(deconv_value))
 	for classe in deconv_data.keys():
 		print(classe)
-		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True)[:10]:
+		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True)[10:]:
 			print(w, deconv_data[classe][w])
 
 	# save deconv model
