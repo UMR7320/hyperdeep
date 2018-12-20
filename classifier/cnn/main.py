@@ -135,33 +135,6 @@ def train(corpus_file, model_file, config):
 	except:
 		print("WARNING: not convolution in this model!")
 
-	# DECONV ANALISIS
-	my_dictionary = preprocessing.my_dictionary
-	deconv_data = {}
-	deconv = deconv_model.predict(x_train)
-	predictions = model.predict(x_train)
-	for sentence_nb in range(len(x_train)):
-		#classe = y_train[sentence_nb]
-		pred = predictions[sentence_nb].tolist()
-		max_val = max(pred)
-		classe = pred.index(max_val)
-		deconv_data[classe] = deconv_data.get(classe, {})
-		for i in range(len(x_train[sentence_nb])):
-			index = x_train[sentence_nb][i]
-			word = my_dictionary["index_word"].get(index, "PAD")
-			deconv_data[classe][word] = deconv_data[classe].get(word, [])
-			deconv_value = deconv[sentence_nb][i]
-			deconv_data[classe][word] += [float(np.sum(deconv_value))]
-
-	for classe in deconv_data.keys():
-		for w in deconv_data[classe].keys():
-			deconv_data[classe][w] = np.mean(deconv_data[classe][w])
-
-	for classe in deconv_data.keys():
-		print(classe)
-		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True)[:10]:
-			print(w, deconv_data[classe][w])
-
 	# save deconv model
 	deconv_model.save(model_file + ".deconv")
 
@@ -195,7 +168,8 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# load deconv_model
 	deconv_model = load_model(model_file + ".deconv")
-
+	print("deconvolution", 	deconv.shape)
+	
 	try:
 		# SETUP THE DECONV LAYER WEIGHTS
 		for layer in deconv_model.layers:	
@@ -208,7 +182,35 @@ def predict(text_file, model_file, config, vectors_file):
 	
 	# apply deconvolution
 	deconv = deconv_model.predict(x_data)
-	print("deconvolution", 	deconv.shape)
+
+	# DECONV ANALISIS
+	my_dictionary = preprocessing.my_dictionary
+	deconv_data = {}
+	
+	for sentence_nb in range(len(x_data)):
+		pred = predictions[sentence_nb].tolist()
+		max_val = max(pred)
+		classe = pred.index(max_val)
+		deconv_data[classe] = deconv_data.get(classe, {})
+		for i in range(len(x_data[sentence_nb])):
+			index = x_data[sentence_nb][i]
+			word = my_dictionary["index_word"].get(index, "PAD")
+			deconv_data[classe][word] = deconv_data[classe].get(word, [])
+			deconv_value = deconv[sentence_nb][i]
+			deconv_data[classe][word] += [float(np.sum(deconv_value))]
+
+	for classe in deconv_data.keys():
+		for w in deconv_data[classe].keys():
+			deconv_data[classe][w] = np.mean(deconv_data[classe][w])
+
+	for classe in deconv_data.keys():
+		print(classe)
+		cpt = 0
+		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True):
+			if cpt >= 50: break
+			if len(w) > 4 and "&" not in w:
+				print(w, deconv_data[classe][w])
+				cpt += 1
 
 	print("----------------------------")
 	print("ATTENTION")
