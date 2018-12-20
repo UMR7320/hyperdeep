@@ -149,12 +149,17 @@ def train(corpus_file, model_file, config):
 		for i in range(len(x_train[sentence_nb])):
 			index = x_train[sentence_nb][i]
 			word = my_dictionary["index_word"].get(index, "PAD")
-			deconv_data[classe][word] = deconv_data[classe].get(word, 0)
+			deconv_data[classe][word] = deconv_data[classe].get(word, [])
 			deconv_value = deconv[sentence_nb][i]
-			deconv_data[classe][word] += float(np.sum(deconv_value))
+			deconv_data[classe][word] += [float(np.sum(deconv_value))]
+
+	for classe in deconv_data.keys():
+		for w in deconv_data[classe].keys():
+			deconv_data[classe][w] = np.mean(deconv_data[classe][w])
+
 	for classe in deconv_data.keys():
 		print(classe)
-		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True)[10:]:
+		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True)[:10]:
 			print(w, deconv_data[classe][w])
 
 	# save deconv model
