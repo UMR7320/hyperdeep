@@ -168,7 +168,6 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# load deconv_model
 	deconv_model = load_model(model_file + ".deconv")
-	print("deconvolution", 	deconv.shape)
 	
 	try:
 		# SETUP THE DECONV LAYER WEIGHTS
@@ -182,6 +181,7 @@ def predict(text_file, model_file, config, vectors_file):
 	
 	# apply deconvolution
 	deconv = deconv_model.predict(x_data)
+	print("deconvolution", 	deconv.shape)
 
 	# DECONV ANALISIS
 	my_dictionary = preprocessing.my_dictionary
