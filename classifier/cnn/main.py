@@ -125,17 +125,39 @@ def train(corpus_file, model_file, config):
 	callbacks_list = [checkpoint]
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
-	# save deconv model
 	try:
-		i = 0
-		for layer in model.layers:	
-			weights = layer.get_weights()
-			deconv_model.layers[i].set_weights(weights)
-			i += 1
+		# SETUP THE DECONV LAYER WEIGHTS
+		for layer in deconv_model.layers:	
 			if type(layer) is Conv2D:
-				break
+				deconv_weights = layer.get_weights()[0]
+		deconv_bias = deconv_model.layers[-1].get_weights()[1]
+		deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
 	except:
 		print("WARNING: not convolution in this model!")
+
+	# DECONV ANALISIS
+	my_dictionary = preprocessing.my_dictionary
+	deconv_data = {}
+	deconv = deconv_model.predict(x_train)
+	predictions = model.predict(x_train)
+	for sentence_nb in range(len(x_train)):
+		#classe = y_train[sentence_nb]
+		pred = predictions[sentence_nb].tolist()
+		max_val = max(pred)
+		classe = pred.index(max_val)
+		deconv_data[classe] = deconv_data.get(classe, {})
+		for i in range(len(x_train[sentence_nb])):
+			index = x_train[sentence_nb][i]
+			word = my_dictionary["index_word"].get(index, "PAD")
+			deconv_data[classe][word] = deconv_data[classe].get(word, 0)
+			deconv_value = deconv[sentence_nb][i]
+			deconv_data[classe][word] += float(np.sum(deconv_value))
+	for classe in deconv_data.keys():
+		print(classe)
+		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True)[:10]:
+			print(w, deconv_data[classe][w])
+
+	# save deconv model
 	deconv_model.save(model_file + ".deconv")
 
 	# save attention model
@@ -167,14 +189,17 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 
 	# load deconv_model
-	deconv_model = load_model(model_file + ".deconv")	
-	
-	# update weights (TODO: should be after the train)
-	for layer in deconv_model.layers:	
-		if type(layer) is Conv2D:
-			deconv_weights = layer.get_weights()[0]
-	deconv_bias = deconv_model.layers[-1].get_weights()[1]
-	deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
+	deconv_model = load_model(model_file + ".deconv")
+
+	try:
+		# SETUP THE DECONV LAYER WEIGHTS
+		for layer in deconv_model.layers:	
+			if type(layer) is Conv2D:
+				deconv_weights = layer.get_weights()[0]
+		deconv_bias = deconv_model.layers[-1].get_weights()[1]
+		deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
+	except:
+		print("WARNING: not convolution in this model!")
 	
 	# apply deconvolution
 	deconv = deconv_model.predict(x_data)
@@ -191,7 +216,6 @@ def predict(text_file, model_file, config, vectors_file):
 	attentions = attention_model.predict(x_data)
 
 	print("attentions", attentions.shape)	
-	#print(attentions)
 
 	# Format result (prediction + deconvolution)
 	my_dictionary = preprocessing.my_dictionary
