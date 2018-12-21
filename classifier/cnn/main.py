@@ -185,64 +185,6 @@ def predict(text_file, model_file, config, vectors_file):
 
 	my_dictionary = preprocessing.my_dictionary
 
-	#----------------
-	# DECONV ANALISIS	
-	cooc = {}
-	pad_index = my_dictionary["word_index"]["PAD"]
-
-	# FOREACH SENTENCE
-	for sentence_nb in range(len(x_data)):
-		pred = predictions[sentence_nb].tolist()
-		max_val = max(pred)
-		classe = pred.index(max_val)
-		#deconv_data[classe] = deconv_data.get(classe, {})
-
-		# FOREACH WORDS
-		deconv_list = {}		
-		for i in range(len(x_data[sentence_nb])):
-			index = x_data[sentence_nb][i]
-			deconv_value = float(np.sum(deconv[sentence_nb][i]))
-			deconv_list[deconv_value] = i
-
-		cooc[classe] = cooc.get(classe, [])
-		print(classe)
-		for deconv_value in sorted(deconv_list.keys(), reverse=True):
-			i = deconv_list[deconv_value]
-			word = my_dictionary["index_word"].get(x_data[sentence_nb][i], "PAD")
-			print(word,)
-			#print(x_data[sentence_nb])
-			x_test = x_data[sentence_nb]
-			x_test[i] = pad_index
-			x_test = np.matrix(x_test)
-			#print(x_test)
-			p_test = model.predict(x_test)
-			pred = p_test[0].tolist()
-			max_val = max(pred)
-			classe_test = pred.index(max_val)
-			if(classe_test != classe):
-				break
-		print("-"*60)
-
-			#word = my_dictionary["index_word"].get(index, "PAD")
-			#deconv_data[classe][word] = deconv_data[classe].get(word, [])
-			#deconv_value = deconv[sentence_nb][i]
-			#deconv_data[classe][word] += [float(np.sum(deconv_value))]
-
-	"""
-	for classe in deconv_data.keys():
-		for w in deconv_data[classe].keys():
-			deconv_data[classe][w] = np.mean(deconv_data[classe][w])
-
-	for classe in deconv_data.keys():
-		print(classe)
-		cpt = 0
-		for w in sorted(deconv_data[classe], key=deconv_data[classe].get, reverse=True):
-			if cpt >= 50: break
-			if len(w) > 4 and "&" not in w:
-				print(w, deconv_data[classe][w])
-				cpt += 1
-	"""
-
 	print("----------------------------")
 	print("ATTENTION")
 	print("----------------------------")
@@ -269,6 +211,7 @@ def predict(text_file, model_file, config, vectors_file):
 			forme_values = [0] * len(x_data[sentence_nb])
 			code_values = [0] * len(x_data[sentence_nb])
 			lemme_values = [0] * len(x_data[sentence_nb])
+
 			for i in range(len(x_data[sentence_nb])):
 				
 				j = int(config["EMBEDDING_DIM"]/3)
@@ -282,21 +225,6 @@ def predict(text_file, model_file, config, vectors_file):
 					
 				# lemme
 				lemme_values[i] = float(np.sum(deconv_value[-j:]))
-			
-			try:
-				ratio_forme = 10 / (sum(forme_values) / float(len(forme_values)))
-			except:
-				ratio_forme = 1
-			try:
-				ratio_code = 10 / (sum(code_values) / float(len(code_values)))
-			except:
-				ratio_code = 1
-			try:
-				ratio_lemme = 10 / (sum(lemme_values) / float(len(lemme_values)))
-			except:
-				ratio_lemme = 1
-
-			print(ratio_forme, ratio_code, ratio_lemme)
 
 			# Create word entry
 			for i in range(len(x_data[sentence_nb])):
@@ -318,12 +246,12 @@ def predict(text_file, model_file, config, vectors_file):
 				# WRITE WORD ENTRY
 				word_args = word.split("**")
 				# deconvolution forme
-				word = word_args[0] + "*" + str(forme_values[i]*ratio_forme)
+				word = word_args[0] + "*" + str(forme_values[i])
 				# deconvolution code
 				try:
-					word += "**" + word_args[1] + "*" + str(code_values[i]*ratio_code)
+					word += "**" + word_args[1] + "*" + str(code_values[i])
 					# deconvolution lemme
-					word += "**" + word_args[2] + "*" + str(lemme_values[i]*ratio_lemme)
+					word += "**" + word_args[2] + "*" + str(lemme_values[i])
 					# attention
 				except:
 					pass # PAD VALUE
