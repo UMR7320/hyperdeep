@@ -183,22 +183,52 @@ def predict(text_file, model_file, config, vectors_file):
 	deconv = deconv_model.predict(x_data)
 	print("deconvolution", 	deconv.shape)
 
-	# DECONV ANALISIS
 	my_dictionary = preprocessing.my_dictionary
-	deconv_data = {}
-	
+
+	#----------------
+	# DECONV ANALISIS	
+	cooc = {}
+	pad_index = my_dictionary["word_index"]["PAD"]
+
+	# FOREACH SENTENCE
 	for sentence_nb in range(len(x_data)):
 		pred = predictions[sentence_nb].tolist()
 		max_val = max(pred)
 		classe = pred.index(max_val)
-		deconv_data[classe] = deconv_data.get(classe, {})
+		#deconv_data[classe] = deconv_data.get(classe, {})
+
+		# FOREACH WORDS
+		deconv_list = {}		
 		for i in range(len(x_data[sentence_nb])):
 			index = x_data[sentence_nb][i]
-			word = my_dictionary["index_word"].get(index, "PAD")
-			deconv_data[classe][word] = deconv_data[classe].get(word, [])
-			deconv_value = deconv[sentence_nb][i]
-			deconv_data[classe][word] += [float(np.sum(deconv_value))]
+			deconv_value = float(np.sum(deconv[sentence_nb][i]))
+			deconv_list[deconv_value] = i
 
+		cooc[classe] = cooc.get(classe, [])
+		print(classe)
+		for deconv_value in sorted(deconv_list.keys(), reverse=True):
+			i = deconv_list[deconv_value]
+			word = my_dictionary["index_word"].get(x_data[sentence_nb][i], "PAD")
+			print(word,)
+			#print(x_data[sentence_nb])
+			x_test = x_data[sentence_nb]
+			x_test[i] = pad_index
+			x_test = np.matrix(x_test)
+			#print(x_test)
+			p_test = model.predict(x_test)
+			pred = p_test[0].tolist()
+			max_val = max(pred)
+			classe_test = pred.index(max_val)
+			if(classe_test != classe):
+				break
+		print("-"*60)
+
+			#word = my_dictionary["index_word"].get(index, "PAD")
+			#deconv_data[classe][word] = deconv_data[classe].get(word, [])
+			#deconv_value = deconv[sentence_nb][i]
+			#deconv_data[classe][word] += [float(np.sum(deconv_value))]
+
+	"""
 	for classe in deconv_data.keys():
 		for w in deconv_data[classe].keys():
 			deconv_data[classe][w] = np.mean(deconv_data[classe][w])
@@ -211,6 +241,7 @@ def predict(text_file, model_file, config, vectors_file):
 			if len(w) > 4 and "&" not in w:
 				print(w, deconv_data[classe][w])
 				cpt += 1
+	"""
 
 	print("----------------------------")
 	print("ATTENTION")
