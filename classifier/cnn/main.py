@@ -204,6 +204,19 @@ def predict(text_file, model_file, config, vectors_file):
 		sentence["sentence"] = ""
 		sentence["prediction"] = predictions[sentence_nb].tolist()
 
+		# ------ DRAW DECONV FACE ------
+		import scipy.misc as smp
+		image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
+		for i in range(len(x_data[sentence_nb])):
+			deconv_value = deconv[sentence_nb][i]
+			for j in range(len(deconv_value)):
+				dv = deconv_value[j][0]
+				dv = dv*200
+				image[i, j] = [dv, 0, 0]
+
+		img = smp.toimage( image )       # Create a PIL image
+		img.show()                      # View in default viewer
+
 		# ------ LEMMATIZED VERSION -------
 		if config["TG"]:
 
