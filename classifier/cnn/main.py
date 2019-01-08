@@ -9,6 +9,7 @@ from keras.layers import Conv2D
 from classifier.cnn import models
 from skipgram.skipgram_with_NS import create_vectors, create_tg_vectors
 from data_helpers import tokenize
+import scipy.misc as smp
 
 class PreProcessing:
 
@@ -197,6 +198,8 @@ def predict(text_file, model_file, config, vectors_file):
 
 	print("attentions", attentions.shape)	
 
+	img_generated = False
+
 	# Format result (prediction + deconvolution)
 	my_dictionary = preprocessing.my_dictionary
 	for sentence_nb in range(len(x_data)):
@@ -205,17 +208,19 @@ def predict(text_file, model_file, config, vectors_file):
 		sentence["prediction"] = predictions[sentence_nb].tolist()
 
 		# ------ DRAW DECONV FACE ------
-		import scipy.misc as smp
-		image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
-		for i in range(len(x_data[sentence_nb])):
-			deconv_value = deconv[sentence_nb][i]
-			for j in range(len(deconv_value)):
-				dv = deconv_value[j][0]
-				dv = dv*200
-				image[i, j] = [dv, 0, 0]
+		if not img_generated:
+			image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
+			for i in range(len(x_data[sentence_nb])):
+				deconv_value = deconv[sentence_nb][i]
+				for j in range(len(deconv_value)):
+					dv = deconv_value[j][0]
+					dv = dv*200
+					image[i, j] = [dv, 0, 0]
 
-		img = smp.toimage( image )       # Create a PIL image
-		img.show()                      # View in default viewer
+			img = smp.toimage( image )       # Create a PIL image
+			#img.show()                      # View in default viewer
+			img.save(model_file + ".png")
+			img_generated = True
 
 		# ------ LEMMATIZED VERSION -------
 		if config["TG"]:
