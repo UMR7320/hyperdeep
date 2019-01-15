@@ -63,12 +63,33 @@ def create_tg_vectors(corpus_file, vectors_file, config):
     lemme.close()
 
     vectors_tg = []
-    for ext in [".FORME", ".CODE", ".LEMME"]:
+    for ext in [".CODE", ".LEMME", ".FORME"]:
         v = {}
         sentences = gensim.models.word2vec.LineSentence(corpus_file + ext)
-        model = gensim.models.Word2Vec(sentences, size=int(config["EMBEDDING_DIM"]/3), window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, sg=config["SG"])
+        if ext == ".CODE":
+            model = gensim.models.Word2Vec(sentences, size=int(config["EMBEDDING_DIM"]/3), window=1, min_count=0, workers=8, sg=config["SG"])
+        else:
+            model = gensim.models.Word2Vec(sentences, size=int(config["EMBEDDING_DIM"]/3), window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, sg=config["SG"])
         for word in model.wv.index2word:
             v[word] = " ".join(str(x) for x in model.wv[word])
+        """
+        else:
+            nb_code = len(model.wv.index2word)
+            i = 0
+            value = 1
+            for word in model.wv.index2word:
+                v[word] = ""
+                for j in range(i):
+                    v[word] += "0 "
+                v[word] += str(value) + " "
+                v[word] += "0 "*int(config["EMBEDDING_DIM"]/3 - (i+1))
+                v[word] = v[word][:-1]
+                i += 1
+                if i >= config["EMBEDDING_DIM"]/3:
+                    i = 0
+                    value += 1
+            print(v[word])
+        """
         vectors_tg.append(v)
 
     vectors = {}

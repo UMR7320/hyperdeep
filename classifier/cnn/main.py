@@ -227,7 +227,6 @@ def predict(text_file, model_file, config, vectors_file):
 			for i in range(config["SEQUENCE_SIZE"]):
 				for e in range(int(config["EMBEDDING_DIM"]/3)):
 					forme_values[i][e] = forme_values[i][e] * ratio_forme
-			#forme_values = np.sum(forme_values, axis=1)
 			
 			# CODE
 			code_values = np.copy(deconv[sentence_nb][:,j:j+j])
@@ -235,7 +234,6 @@ def predict(text_file, model_file, config, vectors_file):
 			for i in range(config["SEQUENCE_SIZE"]):
 				for e in range(int(config["EMBEDDING_DIM"]/3)):
 					code_values[i][e] = code_values[i][e] * ratio_code
-			#code_values = np.sum(code_values, axis=1)
 
 			# LEMME
 			lemme_values = np.copy(deconv[sentence_nb][:,-j:])
@@ -243,7 +241,6 @@ def predict(text_file, model_file, config, vectors_file):
 			for i in range(config["SEQUENCE_SIZE"]):
 				for e in range(int(config["EMBEDDING_DIM"]/3)):
 					lemme_values[i][e] = lemme_values[i][e] * ratio_lemme
-			#lemme_values = np.sum(lemme_values, axis=1)
 
 			# Create word entry
 			for i in range(config["SEQUENCE_SIZE"]):
@@ -316,7 +313,10 @@ def predict(text_file, model_file, config, vectors_file):
 				dv = dv*200
 				raw_image[y, x] = [dv, dv, dv]
 				rgb_image[y, x] = [dv, 0, 0]
-				final_image[y, x] = [forme_values[y][j], 0, 0]
+				try:
+					final_image[y, x] = [0, forme_values[y][j]/2, forme_values[y][j]]
+				except:
+					final_image[y, x] = [dv, 0, 0]
 
 			for j in range(int(config["EMBEDDING_DIM"]/3)):
 				x = j+int(config["EMBEDDING_DIM"]/3)
@@ -324,7 +324,10 @@ def predict(text_file, model_file, config, vectors_file):
 				dv = dv*200
 				raw_image[y, x] = [dv, dv, dv]
 				rgb_image[y, x] = [0, dv, 0]
-				final_image[y, x] = [0, code_values[y][j], 0]
+				try:
+					final_image[y, x] = [code_values[y][j], code_values[y][j]/2, 0]
+				except:
+					final_image[y, x] = [0, dv, 0]
 
 			for j in range(int(config["EMBEDDING_DIM"]/3)):
 				x = j+int(config["EMBEDDING_DIM"]/3*2)
@@ -332,7 +335,10 @@ def predict(text_file, model_file, config, vectors_file):
 				dv = dv*200
 				raw_image[y, x] = [dv, dv, dv]
 				rgb_image[y, x] = [0, 0, dv]
-				final_image[y, x] = [0, 0, lemme_values[y][j]]
+				try:
+					final_image[y, x] = [0, lemme_values[y][j], 0]
+				except:
+					final_image[y, x] = [0, 0, dv]
 
 		img = smp.toimage( raw_image )   # Create a PIL image
 		img.save(model_file + "_raw.png")
