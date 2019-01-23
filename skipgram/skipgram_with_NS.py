@@ -102,16 +102,17 @@ def create_tg_vectors(corpus_file, vectors_file, config):
                 continue
             
             # make vectors representation
-            args = word.split("**")    
-            if args[0] == "": continue
+            args = word.split("**")
+            forme = args[0]
+            code = args[1]
+            lemme = args[2]
             v = word + " "
-            i = 0
-            for arg in args:
+            for i, arg in enumerate([code, lemme, forme]):
                 try:
                     v += vectors_tg[i][arg] + " "
                 except:
+                    print("no vector for: ", i, arg)
                     v += "0 " * int(config["EMBEDDING_DIM"]/3) + " "
-                i += 1
             v += "\n"
             vectors[word] = v
             
