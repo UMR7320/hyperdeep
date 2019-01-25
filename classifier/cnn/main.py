@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import timeit
 
 from keras.utils import np_utils
 from keras.models import load_model
@@ -223,38 +224,20 @@ def predict(text_file, model_file, config, vectors_file):
 
 			deconv_part = [np.copy(deconv[sentence_nb][:,:j]), np.copy(deconv[sentence_nb][:,j:j+j]), np.copy(deconv[sentence_nb][:,-j:])]
 			deconv_values = {}
+
+			# ------------------------
+			# Normalize values
+			# Very slow operation
+			# TODO: Optimize this part
 			for part_nb, part in enumerate(["CODE", "LEMME", "FORME"]):
 				ratio = 255 / np.max(deconv_part[part_nb])
 				deconv_values[part] = deconv_part[part_nb]
-				for i in range(config["SEQUENCE_SIZE"]):
-					for e in range(int(config["EMBEDDING_DIM"]/3)):
-						deconv_values[part][i][e] = deconv_values[part][i][e] * ratio
+				deconv_values[part] = np.multiply(deconv_values[part], [ratio])
+			# ------------------------
+			
 			forme_values = deconv_values["FORME"]
 			code_values = deconv_values["CODE"]
 			lemme_values = deconv_values["LEMME"]
-
-			"""
-			# FORME
-			forme_values = 
-			ratio_forme = 255 / np.max(forme_values)
-			for i in range(config["SEQUENCE_SIZE"]):
-				for e in range(int(config["EMBEDDING_DIM"]/3)):
-					forme_values[i][e] = forme_values[i][e] * ratio_forme
-			
-			# CODE
-			code_values = 
-			ratio_code = 255 / np.max(code_values)
-			for i in range(config["SEQUENCE_SIZE"]):
-				for e in range(int(config["EMBEDDING_DIM"]/3)):
-					code_values[i][e] = code_values[i][e] * ratio_code
-
-			# LEMME
-			lemme_values = 
-			ratio_lemme = 255 / np.max(lemme_values)
-			for i in range(config["SEQUENCE_SIZE"]):
-				for e in range(int(config["EMBEDDING_DIM"]/3)):
-					lemme_values[i][e] = lemme_values[i][e] * ratio_lemme
-			"""
 
 			# Create word entry
 			for i in range(config["SEQUENCE_SIZE"]):
