@@ -19,8 +19,6 @@ from keras.layers import Input, Embedding, LSTM, Dense
 from keras.utils import np_utils
 from keras.layers import multiply
 
-#from config import EMBEDDING_DIM, config["NB_FILTERS"], config["FILTER_SIZES"], DROPOUT_VAL
-
 class CNNModel:
 	
 	def getModel(self, config, weight=None):
@@ -43,7 +41,7 @@ class CNNModel:
 		)(inputs)
 		print("embedding : ", embedding.shape)
 		
-		reshape = Reshape((config["SEQUENCE_SIZE"],config["EMBEDDING_DIM"],1))(embedding)
+		reshape = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding)
 		print("reshape : ", reshape.shape)
 
 		# ---------------------------------------
@@ -56,7 +54,7 @@ class CNNModel:
 			conv_width = config["EMBEDDING_DIM"]
 		conv = Conv2D(config["NB_FILTERS"], (filter, conv_width), strides=(1, conv_width), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape)	
 		print("convolution :", conv.shape)
-		
+
 		# -----------------------------------------
 		# DECONVOLUTION (FOR CNN+LSTM MODEL)
 		# -----------------------------------------
@@ -140,12 +138,8 @@ class CNNModel:
 		# -----------------
 		# FINAL DENSE LAYER
 		# -----------------
-		if config["num_classes"] == 2:
-			crossentropy = 'binary_crossentropy'
-			output_acivation = 'sigmoid'
-		else:
-			crossentropy = 'categorical_crossentropy'
-			output_acivation = 'softmax'
+		crossentropy = 'categorical_crossentropy'
+		output_acivation = 'softmax'
 
 		output = Dense(config["num_classes"], activation=output_acivation)(hidden_dense)
 		print("output :", output.shape)

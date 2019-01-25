@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import timeit
 
 from keras.utils import np_utils
 from keras.models import load_model
@@ -9,6 +10,8 @@ from keras.layers import Conv2D
 from classifier.cnn import models
 from skipgram.skipgram_with_NS import create_vectors, create_tg_vectors
 from data_helpers import tokenize
+import scipy.misc as smp
+import imageio
 
 class PreProcessing:
 
@@ -80,15 +83,18 @@ class PreProcessing:
 			vectors = f.readlines()
 			f.close()
 			
-		i=0
+		#i=0
 		for line in vectors:
 			values = line.split()
 			word = values[0]
 			coefs = np.asarray(values[1:], dtype='float32')
 			embeddings_index[word] = coefs
-			i+=1
-			if i>10000:
-				break
+		
+		# PRECEDEMMENT
+		#	i+=1
+		#	if i>10000:
+		#		break
+		# !!!!!!!!!!!! A TESTER !!!!!!!!!!!!
 
 		print('Found %s word vectors.' % len(embeddings_index))
 		embedding_matrix = np.zeros((len(my_dictionary) + 1, config["EMBEDDING_DIM"]))
@@ -125,17 +131,17 @@ def train(corpus_file, model_file, config):
 	callbacks_list = [checkpoint]
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
-	# save deconv model
 	try:
-		i = 0
-		for layer in model.layers:	
-			weights = layer.get_weights()
-			deconv_model.layers[i].set_weights(weights)
-			i += 1
+		# SETUP THE DECONV LAYER WEIGHTS
+		for layer in deconv_model.layers:	
 			if type(layer) is Conv2D:
-				break
+				deconv_weights = layer.get_weights()[0]
+		deconv_bias = deconv_model.layers[-1].get_weights()[1]
+		deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
 	except:
 		print("WARNING: not convolution in this model!")
+
+	# save deconv model
 	deconv_model.save(model_file + ".deconv")
 
 	# save attention model
@@ -167,18 +173,23 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 
 	# load deconv_model
-	deconv_model = load_model(model_file + ".deconv")	
+	deconv_model = load_model(model_file + ".deconv")
 	
-	# update weights (TODO: should be after the train)
-	for layer in deconv_model.layers:	
-		if type(layer) is Conv2D:
-			deconv_weights = layer.get_weights()[0]
-	deconv_bias = deconv_model.layers[-1].get_weights()[1]
-	deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
+	try:
+		# SETUP THE DECONV LAYER WEIGHTS
+		for layer in deconv_model.layers:	
+			if type(layer) is Conv2D:
+				deconv_weights = layer.get_weights()[0]
+		deconv_bias = deconv_model.layers[-1].get_weights()[1]
+		deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
+	except:
+		print("WARNING: not convolution in this model!")
 	
 	# apply deconvolution
 	deconv = deconv_model.predict(x_data)
 	print("deconvolution", 	deconv.shape)
+
+	my_dictionary = preprocessing.my_dictionary
 
 	print("----------------------------")
 	print("ATTENTION")
@@ -191,10 +202,15 @@ def predict(text_file, model_file, config, vectors_file):
 	attentions = attention_model.predict(x_data)
 
 	print("attentions", attentions.shape)	
-	#print(attentions)
+
+	# GIF ANIMATION
+	raw_images = []
+	rgb_images = []
+	final_images = []
 
 	# Format result (prediction + deconvolution)
 	my_dictionary = preprocessing.my_dictionary
+
 	for sentence_nb in range(len(x_data)):
 		sentence = {}
 		sentence["sentence"] = ""
@@ -204,46 +220,30 @@ def predict(text_file, model_file, config, vectors_file):
 		if config["TG"]:
 
 			# Normalize deconv values
-			forme_values = [0] * len(x_data[sentence_nb])
-			code_values = [0] * len(x_data[sentence_nb])
-			lemme_values = [0] * len(x_data[sentence_nb])
-			for i in range(len(x_data[sentence_nb])):
-				
-				j = int(config["EMBEDDING_DIM"]/3)
-				deconv_value = deconv[sentence_nb][i]
+			j = int(config["EMBEDDING_DIM"]/3)
 
-				# forme
-				forme_values[i] = float(np.sum(deconv_value[:j]))
+			deconv_part = [np.copy(deconv[sentence_nb][:,:j]), np.copy(deconv[sentence_nb][:,j:j+j]), np.copy(deconv[sentence_nb][:,-j:])]
+			deconv_values = {}
 
-				# code
-				code_values[i] = float(np.sum(deconv_value[j:j+j]))
-					
-				# lemme
-				lemme_values[i] = float(np.sum(deconv_value[-j:]))
+			# ------------------------
+			# Normalize values
+			# Very slow operation
+			# TODO: Optimize this part
+			for part_nb, part in enumerate(["CODE", "LEMME", "FORME"]):
+				ratio = 255 / np.max(deconv_part[part_nb])
+				deconv_values[part] = deconv_part[part_nb]
+				deconv_values[part] = np.multiply(deconv_values[part], [ratio])
+			# ------------------------
 			
-			try:
-				ratio_forme = 10 / (sum(forme_values) / float(len(forme_values)))
-			except:
-				ratio_forme = 1
-			try:
-				ratio_code = 10 / (sum(code_values) / float(len(code_values)))
-			except:
-				ratio_code = 1
-			try:
-				ratio_lemme = 10 / (sum(lemme_values) / float(len(lemme_values)))
-			except:
-				ratio_lemme = 1
-
-			print(ratio_forme, ratio_code, ratio_lemme)
+			forme_values = deconv_values["FORME"]
+			code_values = deconv_values["CODE"]
+			lemme_values = deconv_values["LEMME"]
 
 			# Create word entry
-			for i in range(len(x_data[sentence_nb])):
+			for i in range(config["SEQUENCE_SIZE"]):
 				index = x_data[sentence_nb][i]
 				word = my_dictionary["index_word"].get(index, "PAD")
-
-				# READ DECONVOLUTION 
-				deconv_value = deconv[sentence_nb][i]
-				
+			
 				# READ ATTENTION 
 				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
 					attention_value = 0
@@ -256,12 +256,12 @@ def predict(text_file, model_file, config, vectors_file):
 				# WRITE WORD ENTRY
 				word_args = word.split("**")
 				# deconvolution forme
-				word = word_args[0] + "*" + str(forme_values[i]*ratio_forme)
+				word = word_args[0] + "*" + str(np.sum(forme_values[i]))
 				# deconvolution code
 				try:
-					word += "**" + word_args[1] + "*" + str(code_values[i]*ratio_code)
+					word += "**" + word_args[1] + "*" + str(np.sum(code_values[i]))
 					# deconvolution lemme
-					word += "**" + word_args[2] + "*" + str(lemme_values[i]*ratio_lemme)
+					word += "**" + word_args[2] + "*" + str(np.sum(lemme_values[i]))
 					# attention
 				except:
 					pass # PAD VALUE
@@ -271,12 +271,12 @@ def predict(text_file, model_file, config, vectors_file):
 		
 		# ------ STANDARD VERSION -------
 		else:
-			for i in range(len(x_data[sentence_nb])):
+			for i in range(config["SEQUENCE_SIZE"]):
 				index = x_data[sentence_nb][i]
 				word = my_dictionary["index_word"].get(index, "PAD")
 
 				# READ DECONVOLUTION 
-				deconv_value = deconv[sentence_nb][i]
+				forme_values = deconv[sentence_nb][i]
 				
 				# READ ATTENTION 
 				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
@@ -289,13 +289,71 @@ def predict(text_file, model_file, config, vectors_file):
 
 				# WRITE WORD ENTRY
 				# deconvolution
-				word = word + "*" + str(float(np.sum(deconv_value)))
+				word = word + "*" + str(np.sum(forme_values))
 				# attention
 				word += "*" + str(float(attention_value))
 
 				sentence["sentence"] += word + " "
 
 		result.append(sentence)
+
+		# ------ DRAW DECONV FACE ------
+		raw_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
+		rgb_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
+		final_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
+		
+		for y in range(config["SEQUENCE_SIZE"]):
+			deconv_value = deconv[sentence_nb][y]
+			for j in range(int(config["EMBEDDING_DIM"]/3)):
+				x = j
+				dv = deconv_value[x][0]
+				dv = dv*200
+				raw_image[y, x] = [dv, dv, dv]
+				rgb_image[y, x] = [dv, 0, 0]
+				try:
+					final_image[y, x] = [0, forme_values[y][j]/2, forme_values[y][j]]
+				except:
+					final_image[y, x] = [dv, 0, 0]
+
+			for j in range(int(config["EMBEDDING_DIM"]/3)):
+				x = j+int(config["EMBEDDING_DIM"]/3)
+				dv = deconv_value[x][0]
+				dv = dv*200
+				raw_image[y, x] = [dv, dv, dv]
+				rgb_image[y, x] = [0, dv, 0]
+				try:
+					final_image[y, x] = [code_values[y][j], code_values[y][j]/2, 0]
+				except:
+					final_image[y, x] = [0, dv, 0]
+
+			for j in range(int(config["EMBEDDING_DIM"]/3)):
+				x = j+int(config["EMBEDDING_DIM"]/3*2)
+				dv = deconv_value[x][0]
+				dv = dv*200
+				raw_image[y, x] = [dv, dv, dv]
+				rgb_image[y, x] = [0, 0, dv]
+				try:
+					final_image[y, x] = [0, lemme_values[y][j], 0]
+				except:
+					final_image[y, x] = [0, 0, dv]
+
+		img = smp.toimage( raw_image )   # Create a PIL image
+		img.save(model_file + "_raw.png")
+		raw_images.append(imageio.imread(model_file + "_raw.png"))
+		#img.show()                      # View in default viewer
+
+		img = smp.toimage( rgb_image )   # Create a PIL image
+		img.save(model_file + "_rgb.png")
+		rgb_images.append(imageio.imread(model_file + "_rgb.png"))
+
+		img = smp.toimage( final_image )   # Create a PIL image
+		img.save(model_file + "_final.png")
+		final_images.append(imageio.imread(model_file + "_final.png"))
+
+	# CREATE THE GIF ANIMATION
+	imageio.mimsave(model_file + "_raw.gif", raw_images, duration=0.1)
+	imageio.mimsave(model_file + "_rgb.gif", rgb_images, duration=0.1)
+	imageio.mimsave(model_file + "_final.gif", final_images, duration=0.1)
 
 	return result
 
