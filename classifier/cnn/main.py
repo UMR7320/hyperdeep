@@ -23,7 +23,7 @@ class PreProcessing:
 		
 		label_dic = {}
 		labels = []
-		texts = [[]]*3
+		texts = {}
 		
 		# Read text and detect classes/labels
 		self.num_classes = 0
@@ -46,11 +46,10 @@ class PreProcessing:
 				for i, arg in enumerate(args):
 					sentence[i] += arg + " "
 			for i in range(3):
-				sentence[i] += "\n"
-				texts[i] += [sentence[i]]
+				texts[i] = texts.get(i, []) + [sentence[i]]
 
-			#print(texts)
-
+		print(texts[0][-2])
+		print(texts[0][-3])
 		f.close()
 		
 		print("DETECTED LABELS :")
@@ -60,7 +59,7 @@ class PreProcessing:
 		#random.shuffle(data)
 		#labels, texts = zip(*data)
 
-		my_dictionary, data = tokenize(texts, model_file, create_dictionnary, config)
+		my_dictionary, data = tokenize(texts[0], model_file, create_dictionnary, config)
 
 		print('Found %s unique tokens.' % len(my_dictionary["word_index"]))
 
@@ -145,6 +144,7 @@ def train(corpus_file, model_file, config):
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 	callbacks_list = [checkpoint]
+	print(config)
 	model.fit([x_train,x_train,x_train], y_train, validation_data=([x_val, x_val,x_val], y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	"""
