@@ -42,24 +42,6 @@ if __name__ == '__main__':
         print_help()
         exit()
 
-    # LOAD MODEL CONFIG
-    try:
-        config = json.loads(open(corpus_file + ".config", "r").read())
-    except:
-        config = json.loads(open("config.json", "r").read())
-    
-    config["F_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
-    config["C_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
-    config["L_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
-
-    config["F_FILTER_SIZES"] = config["FILTER_SIZES"]
-    config["C_FILTER_SIZES"] = config["FILTER_SIZES"]
-    config["L_FILTER_SIZES"] = config["FILTER_SIZES"]
-
-    config["F_NB_FILTERS"] = config["NB_FILTERS"]
-    config["C_NB_FILTERS"] = config["NB_FILTERS"]
-    config["L_NB_FILTERS"] = config["NB_FILTERS"]
-
     # EXECT COMMAND
     if command == "skipgram":
         try:
@@ -103,6 +85,24 @@ if __name__ == '__main__':
             corpus_file = args["-input"]
             model_file = args["-output"]
 
+            # GET CONFIG FILE
+            try:
+                config = json.loads(open(corpus_file + ".config", "r").read())
+            except:
+                config = json.loads(open("config.json", "r").read())
+
+            config["F_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
+            config["C_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
+            config["L_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
+
+            config["F_FILTER_SIZES"] = config["FILTER_SIZES"]
+            config["C_FILTER_SIZES"] = config["FILTER_SIZES"]
+            config["L_FILTER_SIZES"] = config["FILTER_SIZES"]
+
+            config["F_NB_FILTERS"] = config["NB_FILTERS"]
+            config["C_NB_FILTERS"] = config["NB_FILTERS"]
+            config["L_NB_FILTERS"] = config["NB_FILTERS"]
+
             # TRAIN
             scores = train(corpus_file, model_file, config)
             config["loss"] = scores[0]*100 # Loss
@@ -132,6 +132,7 @@ if __name__ == '__main__':
             model_file = args[2]
             vectors_file = args[3]
             text_file = args[4]
+            config = json.loads(open(model_file + ".config", "r").read())
             predictions = predict(text_file, model_file, config, vectors_file)
 
             # save predictions in a file

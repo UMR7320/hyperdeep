@@ -40,16 +40,15 @@ class PreProcessing:
 
 			# TEXT
 			text = text.replace("__" + label + "__ ", "")
-			sentence = [""]*3
+			sentence = []
 			for token in text.split():
 				args = token.split("**")
+				if len(sentence) == 0:
+					sentence = [""]*len(args)
 				for i, arg in enumerate(args):
 					sentence[i] += arg + " "
-			for i in range(3):
+			for i in range(len(sentence)):
 				texts[i] = texts.get(i, []) + [sentence[i]]
-
-		print(texts[0][-2])
-		print(texts[0][-3])
 		f.close()
 		
 		print("DETECTED LABELS :")
@@ -59,65 +58,61 @@ class PreProcessing:
 		#random.shuffle(data)
 		#labels, texts = zip(*data)
 
-		my_dictionary, data = tokenize(texts[0], model_file, create_dictionnary, config)
+		dictionaries, datas = tokenize(texts, model_file, create_dictionnary, config)
 
-		print('Found %s unique tokens.' % len(my_dictionary["word_index"]))
+		for i, dictionary in enumerate(dictionaries):
+			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
 
 		labels = np_utils.to_categorical(np.asarray(labels))
-		
-		print('Shape of data tensor:', data.shape)
 		print('Shape of label tensor:', labels.shape)
 
-		# split the data into a training set and a validation set
-		indices = np.arange(data.shape[0])
-		np.random.shuffle(indices)
-		data = data[indices]
-		labels = labels[indices]
-		nb_validation_samples = int(config["VALIDATION_SPLIT"] * data.shape[0])
+		# Size of validation sample
+		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
 
-		self.x_train = data[:-nb_validation_samples]
+		# split the data into a training set and a validation set
+		indices = np.arange(datas[0].shape[0])
+		np.random.shuffle(indices)
+		labels = labels[indices]
 		self.y_train = labels[:-nb_validation_samples]
-		self.x_val = data[-nb_validation_samples:]
 		self.y_val = labels[-nb_validation_samples:]
-		self.my_dictionary = my_dictionary
+
+		self.x_train = []
+		self.x_val = []
+		for data in datas:
+			data = data[indices]
+			self.x_train += [data[:-nb_validation_samples]]
+			self.x_val += [data[-nb_validation_samples:]]
+
+		self.dictionaries = dictionaries
 
 	def loadEmbeddings(self, model_file, config, vectors_file = False):
 		
-		my_dictionary = self.my_dictionary["word_index"]
-		embeddings_index = {}
+		self.embedding_matrix = []
 
-		if not vectors_file:
-			if config["TG"]:
-				vectors = create_tg_vectors(self.corpus_file, model_file + ".vec", config)
+		for i, dictionary in enumerate(self.dictionaries):
+			my_dictionary = dictionary["word_index"]
+			embeddings_index = {}
+
+			if not vectors_file:
+				vectors = create_vectors(self.corpus_file, model_file + str(i) + ".vec", config)
 			else:
-				vectors = create_vectors(self.corpus_file, model_file + ".vec", config)
-		else:
-			f = open(vectors_file, "r")
-			vectors = f.readlines()
-			f.close()
-			
-		#i=0
-		for line in vectors:
-			values = line.split()
-			word = values[0]
-			coefs = np.asarray(values[1:], dtype='float32')
-			embeddings_index[word] = coefs
-		
-		# PRECEDEMMENT
-		#	i+=1
-		#	if i>10000:
-		#		break
-		# !!!!!!!!!!!! A TESTER !!!!!!!!!!!!
+				f = open(vectors_file + str(i), "r")
+				vectors = f.readlines()
+				f.close()
+				
+			for line in vectors:
+				values = line.split()
+				word = values[0]
+				coefs = np.asarray(values[1:], dtype='float32')
+				embeddings_index[word] = coefs
 
-		print('Found %s word vectors.' % len(embeddings_index))
-		embedding_matrix = np.zeros((len(my_dictionary) + 1, config["EMBEDDING_DIM"]))
-		for word, i in my_dictionary.items():
-			embedding_vector = embeddings_index.get(word)
-			if embedding_vector is not None:
-				# words not found in embedding index will be all-zeros.
-				embedding_matrix[i] = embedding_vector
-
-		self.embedding_matrix = [embedding_matrix]
+			print('Found %s word vectors.' % len(embeddings_index))
+			self.embedding_matrix += [np.zeros((len(my_dictionary) + 1, config["EMBEDDING_DIM"]))]
+			for word, j in my_dictionary.items():
+				embedding_vector = embeddings_index.get(word)
+				if embedding_vector is not None:
+					# words not found in embedding index will be all-zeros.
+					self.embedding_matrix[i][j] = embedding_vector
 
 def train(corpus_file, model_file, config):
 
@@ -144,7 +139,6 @@ def train(corpus_file, model_file, config):
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 	callbacks_list = [checkpoint]
-	print(config)
 	model.fit([x_train,x_train,x_train], y_train, validation_data=([x_val, x_val,x_val], y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	"""
