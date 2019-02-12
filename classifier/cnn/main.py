@@ -47,7 +47,12 @@ class PreProcessing:
 				if len(sequence) == 0:
 					sequence = [""]*len(args)
 				for i, arg in enumerate(args):
-					sequence[i] += arg + " "
+					if i > 0:
+						print(token)
+					try:
+						sequence[i] += arg + " "
+					except:
+						print("error with", args)
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, []) + [sequence[i]]
 
@@ -111,7 +116,7 @@ class PreProcessing:
 				embeddings_index[word] = coefs
 
 			print('Found %s word vectors.' % len(embeddings_index))
-			self.embedding_matrix += [np.zeros((len(my_dictionary) + 1, config["EMBEDDING_DIM"]))]
+			self.embedding_matrix += [np.zeros((len(my_dictionary), config["EMBEDDING_DIM"]))]
 			for word, j in my_dictionary.items():
 				embedding_vector = embeddings_index.get(word)
 				if embedding_vector is not None:
@@ -181,11 +186,14 @@ def predict(text_file, model_file, config, vectors_file):
 	#preprocessing.loadEmbeddings(model_file, config, vectors_file)
 	
 	# load and predict
-	x_data = np.concatenate((preprocessing.x_train,preprocessing.x_val), axis=0)
 	model = load_model(model_file)
+
+	print("-"*20)
+	print("TODO CHANGE THIS : USING preprocessing.x_train !!!!!")
+	print("-"*20)
+	#x_data = np.concatenate((preprocessing.x_train,preprocessing.x_val), axis=0)
+	x_data = preprocessing.x_train
 	predictions = model.predict(x_data)
-	
-	print(predictions)	
 
 	print("----------------------------")
 	print("DECONVOLUTION")
@@ -210,7 +218,7 @@ def predict(text_file, model_file, config, vectors_file):
 	print("deconvolution", 	deconv.shape)
 	"""
 
-	my_dictionary = preprocessing.my_dictionary
+	my_dictionary = preprocessing.dictionaries
 
 	"""
 	print("----------------------------")
@@ -228,7 +236,7 @@ def predict(text_file, model_file, config, vectors_file):
 	# Format result (prediction + deconvolution)
 	my_dictionary = preprocessing.my_dictionary
 	"""
-	for sentence_nb in range(len(x_data)):
+	for sentence_nb in range(len(x_data[0])):
 		sentence = {}
 		sentence["sentence"] = ""
 		sentence["prediction"] = predictions[sentence_nb].tolist()
@@ -262,8 +270,8 @@ def predict(text_file, model_file, config, vectors_file):
 
 			# Create word entry
 			for i in range(config["SEQUENCE_SIZE"]):
-				index = x_data[sentence_nb][i]
-				word = my_dictionary["index_word"].get(index, "PAD")
+				index = x_data[0][sentence_nb][i]
+				word = my_dictionary[0]["index_word"].get(index, "PAD")
 			
 				# READ ATTENTION 
 				"""
@@ -275,9 +283,6 @@ def predict(text_file, model_file, config, vectors_file):
 					except: # BUG WITH FILTER_SIZE > 3
 						attention_value = 0
 				"""
-
-				# WRITE WORD ENTRY
-				word_args = word.split("**")
 
 				"""
 				# deconvolution forme
@@ -293,18 +298,15 @@ def predict(text_file, model_file, config, vectors_file):
 				word += "*" + str(float(attention_value))
 				"""
 
-				word = word_args[0] + "*1**" 
-				word += word_args[1] + "*1**"
-				word += word_args[2] + "*1"
-				# attention
-				word += "*1"
+				word = word + "*1*1"
 				sentence["sentence"] += word + " "
+			print(sentence["sentence"])
 		
 		# ------ STANDARD VERSION -------
 		else:
 			for i in range(config["SEQUENCE_SIZE"]):
-				index = x_data[sentence_nb][i]
-				word = my_dictionary["index_word"].get(index, "PAD")
+				index = x_data[0][sentence_nb][i]
+				word = my_dictionary[0]["index_word"].get(index, "PAD")
 
 				# READ DECONVOLUTION 
 				#forme_values = deconv[sentence_nb][i]

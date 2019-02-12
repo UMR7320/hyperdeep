@@ -86,25 +86,25 @@ class CNNModel:
 		pool = [0]*3
 		flat = [0]*3
 
-		for i, arg in enumerate(["F", "C", "L"]):
+		for i in range(3):
 			print("CHANNELS ", i)
 			inputs[i] = Input(shape=(config["SEQUENCE_SIZE"],), dtype='int32')
 			print("input", i,  inputs[i].shape)
 			embedding[i] = Embedding(
 				config["vocab_size"][i],
-				config[arg + "_EMBEDDING_DIM"],
+				config["EMBEDDING_DIM"],
 				input_length=config["SEQUENCE_SIZE"],
-				#weights=weight[i],
+				weights=[weight[i]],
 				trainable=True
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
-			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config[arg + "_EMBEDDING_DIM"], 1))(embedding[i])
+			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
 			print("reshape", i,  reshape[i].shape)
-			conv[i] = Conv2D(config[arg + "_NB_FILTERS"], (config[arg + "_FILTER_SIZES"], config[arg + "_EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape[i])
+			conv[i] = Conv2D(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape[i])
 			print("conv", i,  conv[i].shape)
-			deconv[i] = Conv2DTranspose(1, (config[arg + "_FILTER_SIZES"], config[arg + "_EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
+			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
 			deconv_model[i] = Model(inputs=inputs[i], outputs=deconv[i])
-			pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config[arg + "_FILTER_SIZES"] + 1, 1), strides=(1, config[arg + "_EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
+			pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
 			print("pool", i,  pool[i].shape)
 			flat[i] = Flatten()(pool[i])
 			print("flat", i,  flat[i].shape)

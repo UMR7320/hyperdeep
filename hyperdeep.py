@@ -91,18 +91,6 @@ if __name__ == '__main__':
             except:
                 config = json.loads(open("config.json", "r").read())
 
-            config["F_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
-            config["C_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
-            config["L_EMBEDDING_DIM"] = config["EMBEDDING_DIM"]
-
-            config["F_FILTER_SIZES"] = config["FILTER_SIZES"]
-            config["C_FILTER_SIZES"] = config["FILTER_SIZES"]
-            config["L_FILTER_SIZES"] = config["FILTER_SIZES"]
-
-            config["F_NB_FILTERS"] = config["NB_FILTERS"]
-            config["C_NB_FILTERS"] = config["NB_FILTERS"]
-            config["L_NB_FILTERS"] = config["NB_FILTERS"]
-
             # TRAIN
             scores = train(corpus_file, model_file, config)
             config["loss"] = scores[0]*100 # Loss

@@ -48,6 +48,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 
 	if create_dictionnary:
 		with open(model_file + ".index", 'wb') as handle:
-			pickle.dump(dictionaries[i], handle, protocol=pickle.HIGHEST_PROTOCOL)
+			pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	return dictionaries, datas
