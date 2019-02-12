@@ -91,10 +91,10 @@ class CNNModel:
 			inputs[i] = Input(shape=(config["SEQUENCE_SIZE"],), dtype='int32')
 			print("input", i,  inputs[i].shape)
 			embedding[i] = Embedding(
-				config[arg + "_vocab_size"]+1,
+				config["vocab_size"][i],
 				config[arg + "_EMBEDDING_DIM"],
 				input_length=config["SEQUENCE_SIZE"],
-				weights=weight,
+				#weights=weight[i],
 				trainable=True
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)

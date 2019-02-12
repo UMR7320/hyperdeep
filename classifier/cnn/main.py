@@ -27,11 +27,12 @@ class PreProcessing:
 		
 		# Read text and detect classes/labels
 		self.num_classes = 0
+		
 		f = open(corpus_file, "r")
-		for text in f.readlines():
+		for line in f.readlines():
 
 			# LABELS
-			label = text.split("__ ")[0].replace("__", "")
+			label = line.split("__ ")[0].replace("__", "")
 			if label not in label_dic.keys():
 				label_dic[label] = self.num_classes
 				self.num_classes += 1
@@ -39,17 +40,23 @@ class PreProcessing:
 			labels += [label_int]
 
 			# TEXT
-			text = text.replace("__" + label + "__ ", "")
-			sentence = []
-			for token in text.split():
+			line = line.replace("__" + label + "__ ", "")
+			sequence = []
+			for token in line.split():
 				args = token.split("**")
-				if len(sentence) == 0:
-					sentence = [""]*len(args)
+				if len(sequence) == 0:
+					sequence = [""]*len(args)
 				for i, arg in enumerate(args):
-					sentence[i] += arg + " "
-			for i in range(len(sentence)):
-				texts[i] = texts.get(i, []) + [sentence[i]]
+					sequence[i] += arg + " "
+			for i in range(len(sequence)):
+				texts[i] = texts.get(i, []) + [sequence[i]]
+
 		f.close()
+		for i, text in texts.items():
+			f = open(corpus_file + "." + str(i), "w")
+			for sequence in text:
+				f.write(sequence + "\n")
+			f.close()
 		
 		print("DETECTED LABELS :")
 		#print(label_dic)
@@ -85,22 +92,19 @@ class PreProcessing:
 
 		self.dictionaries = dictionaries
 
-	def loadEmbeddings(self, model_file, config, vectors_file = False):
+	def loadEmbeddings(self, model_file, config, create_v = False):
 		
 		self.embedding_matrix = []
+
+		if not create_v:
+			create_vectors(self.corpus_file, model_file, config, nb_channels=len(self.dictionaries))
 
 		for i, dictionary in enumerate(self.dictionaries):
 			my_dictionary = dictionary["word_index"]
 			embeddings_index = {}
-
-			if not vectors_file:
-				vectors = create_vectors(self.corpus_file, model_file + str(i) + ".vec", config)
-			else:
-				f = open(vectors_file + str(i), "r")
-				vectors = f.readlines()
-				f.close()
+			vectors = open(model_file + "." + str(i) + ".vec"  ,'r')
 				
-			for line in vectors:
+			for line in vectors.readlines():
 				values = line.split()
 				word = values[0]
 				coefs = np.asarray(values[1:], dtype='float32')
@@ -113,6 +117,7 @@ class PreProcessing:
 				if embedding_vector is not None:
 					# words not found in embedding index will be all-zeros.
 					self.embedding_matrix[i][j] = embedding_vector
+			vectors.close()
 
 def train(corpus_file, model_file, config):
 
@@ -126,10 +131,9 @@ def train(corpus_file, model_file, config):
 	
 	# Establish params
 	config["num_classes"] = preprocessing.num_classes 
-	config["vocab_size"] = len(preprocessing.my_dictionary["word_index"]) 
-	config["F_vocab_size"] = config["vocab_size"]
-	config["C_vocab_size"] = config["vocab_size"]
-	config["L_vocab_size"] = config["vocab_size"]
+	config["vocab_size"] = []
+	for dictionary in preprocessing.dictionaries:
+		config["vocab_size"] += [len(dictionary["word_index"])]
 
 	# create and get model
 	cnn_model = models.CNNModel()
@@ -139,7 +143,7 @@ def train(corpus_file, model_file, config):
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 	callbacks_list = [checkpoint]
-	model.fit([x_train,x_train,x_train], y_train, validation_data=([x_val, x_val,x_val], y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
+	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	"""
 	try:

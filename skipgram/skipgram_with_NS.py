@@ -10,30 +10,29 @@ from keras.models import Model
 from keras.preprocessing.sequence import skipgrams
 from data_helpers import tokenize
 
-def create_vectors(corpus_file, vectors_file, config):
+def create_vectors(corpus_file, model_file, config, nb_channels):
 
-    # GENSIM METHOD    				
-    sentences = gensim.models.word2vec.LineSentence(corpus_file)
-    print(sentences)
+    for i in range(nb_channels):
 
-    # sg defines the training algorithm. By default (sg=0), CBOW is used. Otherwise (sg=1), skip-gram is employed.
-    model = gensim.models.Word2Vec(sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, sg=config["SG"])
+        # GENSIM METHOD    				
+        sentences = gensim.models.word2vec.LineSentence(corpus_file + "." + str(i))
 
-    f = open(vectors_file ,'w')
-    vectors = []
-    vector = '{} {}\n'.format(len(model.wv.index2word), config["EMBEDDING_DIM"])
-    vectors.append(vector)
-    f.write(vector)    
-    for word in model.wv.index2word:
-        vector = word + " " + " ".join(str(x) for x in model.wv[word]) + "\n"
+        # sg defines the training algorithm. By default (sg=0), CBOW is used. Otherwise (sg=1), skip-gram is employed.
+        model = gensim.models.Word2Vec(sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, sg=config["SG"])
+
+        f = open(model_file + "." + str(i) + ".vec"  ,'w')
+        vectors = []
+        vector = '{} {}\n'.format(len(model.wv.index2word), config["EMBEDDING_DIM"])
         vectors.append(vector)
-        f.write(vector)
-    f.flush()
-    f.close()
+        f.write(vector)    
+        for word in model.wv.index2word:
+            vector = word + " " + " ".join(str(x) for x in model.wv[word]) + "\n"
+            vectors.append(vector)
+            f.write(vector)
+        f.flush()
+        f.close()
 
     print("word2vec done.")
-
-    return vectors
 
 def create_tg_vectors(corpus_file, vectors_file, config):
 
