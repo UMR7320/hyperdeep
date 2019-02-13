@@ -8,7 +8,7 @@ from keras.callbacks import ModelCheckpoint
 from keras.layers import Conv2D
 
 from classifier.cnn import models
-from skipgram.skipgram_with_NS import create_vectors, create_tg_vectors
+from skipgram.skipgram_with_NS import create_vectors
 from data_helpers import tokenize
 import scipy.misc as smp
 import imageio
