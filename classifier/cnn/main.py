@@ -169,9 +169,7 @@ def predict(text_file, model_file, config, vectors_file):
 	result = []
 
 	# GIF ANIMATION
-	raw_images = []
-	rgb_images = []
-	final_images = []
+	deconv_images = []
 
 	# preprocess data
 	preprocessing = PreProcessing()
@@ -221,183 +219,23 @@ def predict(text_file, model_file, config, vectors_file):
 			sentence["sentence"] += word + " "
 		result.append(sentence)
 
-	"""
-	try:
-		# SETUP THE DECONV LAYER WEIGHTS
-		for layer in deconv_model.layers:	
-			if type(layer) is Conv2D:
-				deconv_weights = layer.get_weights()[0]
-		deconv_bias = deconv_model.layers[-1].get_weights()[1]
-		deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
-	except:
-		print("WARNING: not convolution in this model!")
-	
-	# apply deconvolution
-	deconv = deconv_model.predict(x_data)
-	print("deconvolution", 	deconv.shape)
-	"""
-	#my_dictionary = preprocessing.dictionaries
-
-	"""
-	print("----------------------------")
-	print("ATTENTION")
-	print("----------------------------")
-
-	# load deconv_model
-	attention_model = load_model(model_file + ".attention")	
-
-	# apply deconvolution
-	attentions = attention_model.predict(x_data)
-
-	print("attentions", attentions.shape)	
-
-	# Format result (prediction + deconvolution)
-	my_dictionary = preprocessing.my_dictionary
-
-	for sentence_nb in range(len(x_data[0])):
-		sentence = {}
-		sentence["sentence"] = ""
-		sentence["prediction"] = predictions[sentence_nb].tolist()
-
-		# ------ LEMMATIZED VERSION -------
-		if config["TG"]:
-
-			# Normalize deconv values
-			j = int(config["EMBEDDING_DIM"]/3)
-
-			#deconv_part = [np.copy(deconv[sentence_nb][:,:j]), np.copy(deconv[sentence_nb][:,j:j+j]), np.copy(deconv[sentence_nb][:,-j:])]
-			deconv_values = {}
-
-			# ------------------------
-			# Normalize values
-			# Very slow operation
-			# TODO: Optimize this part
-			for part_nb, part in enumerate(["CODE", "LEMME", "FORME"]):
-				ratio = 255 / np.max(deconv_part[part_nb])
-				deconv_values[part] = deconv_part[part_nb]
-				deconv_values[part] = np.multiply(deconv_values[part], [ratio])
-			# ------------------------
-			
-			forme_values = deconv_values["FORME"]
-			code_values = deconv_values["CODE"]
-			lemme_values = deconv_values["LEMME"]
-
-			# Create word entry
-			for i in range(config["SEQUENCE_SIZE"]):
-				index = x_data[0][sentence_nb][i]
-				word = my_dictionary[0]["index_word"].get(index, "PAD")
-			
-				# READ ATTENTION 
-				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
-					attention_value = 0
-				else:
-					try:
-						attention_value = attentions[sentence_nb][i-1]
-					except: # BUG WITH FILTER_SIZE > 3
-						attention_value = 0
-
-				# deconvolution forme
-				word = word_args[0] + "*" + str(np.sum(forme_values[i]))
-				# deconvolution code
-				try:
-					word += "**" + word_args[1] + "*" + str(np.sum(code_values[i]))
-					# deconvolution lemme
-					word += "**" + word_args[2] + "*" + str(np.sum(lemme_values[i]))
-					# attention
-				except:
-					pass # PAD VALUE
-				word += "*" + str(float(attention_value))
-
-				word = word + "*1*1"
-				sentence["sentence"] += word + " "
-			print(sentence["sentence"])
-		
-		# ------ STANDARD VERSION -------
-		else:
-			for i in range(config["SEQUENCE_SIZE"]):
-				index = x_data[0][sentence_nb][i]
-				word = my_dictionary[0]["index_word"].get(index, "PAD")
-
-				# READ DECONVOLUTION 
-				#forme_values = deconv[sentence_nb][i]
-				
-				# READ ATTENTION 
-				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
-					attention_value = 0
-				else:
-					try:
-						attention_value = attentions[sentence_nb][i-1]
-					except: # BUG WITH FILTER_SIZE > 3
-						attention_value = 0
-
-				# WRITE WORD ENTRY
-				# deconvolution
-				word = word + "*1"
-				# attention
-				word += "*1"
-
-				sentence["sentence"] += word + " "
-
-		result.append(sentence)
-
 		# ------ DRAW DECONV FACE ------
-		raw_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
-		rgb_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
-		final_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
-		
-		for y in range(config["SEQUENCE_SIZE"]):
-			deconv_value = deconv[sentence_nb][y]
-			for j in range(int(config["EMBEDDING_DIM"]/3)):
-				x = j
-				dv = deconv_value[x][0]
-				dv = dv*200
-				raw_image[y, x] = [dv, dv, dv]
-				rgb_image[y, x] = [dv, 0, 0]
-				try:
-					final_image[y, x] = [0, forme_values[y][j]/2, forme_values[y][j]]
-				except:
-					final_image[y, x] = [dv, 0, 0]
+		deconv_image = np.zeros( (config["SEQUENCE_SIZE"]*len(x_data), config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
+		for channel in range(len(x_data)):
+			for y in range(config["SEQUENCE_SIZE"]):
+				deconv_value = deconv[channel][sentence_nb][y]
+				for x in range(int(config["EMBEDDING_DIM"])):
+					dv = deconv_value[x]
+					dv = dv*200
+					deconv_image[y+config["SEQUENCE_SIZE"]*(channel), x] = [dv, dv, dv]
 
-			for j in range(int(config["EMBEDDING_DIM"]/3)):
-				x = j+int(config["EMBEDDING_DIM"]/3)
-				dv = deconv_value[x][0]
-				dv = dv*200
-				raw_image[y, x] = [dv, dv, dv]
-				rgb_image[y, x] = [0, dv, 0]
-				try:
-					final_image[y, x] = [code_values[y][j], code_values[y][j]/2, 0]
-				except:
-					final_image[y, x] = [0, dv, 0]
-
-			for j in range(int(config["EMBEDDING_DIM"]/3)):
-				x = j+int(config["EMBEDDING_DIM"]/3*2)
-				dv = deconv_value[x][0]
-				dv = dv*200
-				raw_image[y, x] = [dv, dv, dv]
-				rgb_image[y, x] = [0, 0, dv]
-				try:
-					final_image[y, x] = [0, lemme_values[y][j], 0]
-				except:
-					final_image[y, x] = [0, 0, dv]
-
-		img = smp.toimage( raw_image )   # Create a PIL image
-		img.save(model_file + "_raw.png")
-		raw_images.append(imageio.imread(model_file + "_raw.png"))
-		#img.show()                      # View in default viewer
-
-		img = smp.toimage( rgb_image )   # Create a PIL image
-		img.save(model_file + "_rgb.png")
-		rgb_images.append(imageio.imread(model_file + "_rgb.png"))
-
-		img = smp.toimage( final_image )   # Create a PIL image
-		img.save(model_file + "_final.png")
-		final_images.append(imageio.imread(model_file + "_final.png"))
+		img = smp.toimage( deconv_image )   # Create a PIL image
+		img.save(model_file + ".png")
+		deconv_images.append(imageio.imread(model_file + ".png"))
 
 	# CREATE THE GIF ANIMATION
-	imageio.mimsave(model_file + "_raw.gif", raw_images, duration=0.1)
-	imageio.mimsave(model_file + "_rgb.gif", rgb_images, duration=0.1)
-	imageio.mimsave(model_file + "_final.gif", final_images, duration=0.1)
-	"""
+	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
+
 
 	return result
 
