@@ -90,11 +90,15 @@ class CNNModel:
 			print("CHANNELS ", i)
 			inputs[i] = Input(shape=(config["SEQUENCE_SIZE"],), dtype='int32')
 			print("input", i,  inputs[i].shape)
+			if i == 1:
+				weights = None
+			else:
+				weights=[weight[i]]
 			embedding[i] = Embedding(
 				config["vocab_size"][i],
 				config["EMBEDDING_DIM"],
 				input_length=config["SEQUENCE_SIZE"],
-				weights=[weight[i]],
+				weights=weights,
 				trainable=True
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)

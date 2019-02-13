@@ -14,11 +14,6 @@ def create_vectors(corpus_file, model_file, config, nb_channels):
 
     for i in range(nb_channels):
 
-        if i == 1:
-            window = 1
-        else:
-            window = config["WINDOW_SIZE"]
-
         # GENSIM METHOD    				
         sentences = gensim.models.word2vec.LineSentence(corpus_file + "." + str(i))
 
