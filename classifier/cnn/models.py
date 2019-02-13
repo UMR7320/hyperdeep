@@ -88,14 +88,12 @@ class CNNModel:
 
 		for i in range(3):
 			print("CHANNELS ", i)
+
+			# INPUTS
 			inputs[i] = Input(shape=(config["SEQUENCE_SIZE"],), dtype='int32')
 			print("input", i,  inputs[i].shape)
 
-			if i == 1:
-				nb_filters = int(config["NB_FILTERS"] / 10)
-			else:
-				nb_filters = config["NB_FILTERS"]
-
+			# EMBEDDING
 			if config["SG"] == -1:
 				weights = None
 			else:
@@ -108,16 +106,28 @@ class CNNModel:
 				trainable=True
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
+
+			# RESHAPE
 			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
 			print("reshape", i,  reshape[i].shape)
+
+			# CONVOLUTION
 			conv[i] = Conv2D(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape[i])
 			print("conv", i,  conv[i].shape)
+
+			# DECONVOLUTION
 			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
 			deconv_model[i] = Model(inputs=inputs[i], outputs=deconv[i])
+			print("deconv", i,  deconv[i].shape)
+			
+			# MAXPOOLING
 			pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
 			print("pool", i,  pool[i].shape)
+
+			# FLATTEN
 			flat[i] = Flatten()(pool[i])
 			print("flat", i,  flat[i].shape)
+
 			print("-"*20)
 		
 		# merge
