@@ -208,12 +208,14 @@ def predict(text_file, model_file, config, vectors_file):
 
 		# READ SENTENCE WORD BY WORD
 		for i in range(config["SEQUENCE_SIZE"]):
-			index = x_data[channel][sentence_nb][i]			
-
 			word = ""
 			for channel in range(len(x_data)):
+				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
-				word += "*" + str(np.sum(deconv[channel][sentence_nb][i]))
+				if channel != 0:
+					word += "*0"
+				else:	
+					word += "*" + str(np.sum(deconv[channel][sentence_nb][i]))
 				word += "**"
 			word = word[:-1] + "0" # attention...
 			sentence["sentence"] += word + " "
