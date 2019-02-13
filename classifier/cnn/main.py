@@ -47,8 +47,6 @@ class PreProcessing:
 				if len(sequence) == 0:
 					sequence = [""]*len(args)
 				for i, arg in enumerate(args):
-					if i > 0:
-						print(token)
 					try:
 						sequence[i] += arg + " "
 					except:
