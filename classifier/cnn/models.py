@@ -90,7 +90,13 @@ class CNNModel:
 			print("CHANNELS ", i)
 			inputs[i] = Input(shape=(config["SEQUENCE_SIZE"],), dtype='int32')
 			print("input", i,  inputs[i].shape)
+
 			if i == 1:
+				nb_filters = int(config["NB_FILTERS"] / 10)
+			else:
+				nb_filters = config["NB_FILTERS"]
+
+			if config["SG"] != -1:
 				weights = None
 			else:
 				weights=[weight[i]]
