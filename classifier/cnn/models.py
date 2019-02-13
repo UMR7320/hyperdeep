@@ -96,7 +96,7 @@ class CNNModel:
 			else:
 				nb_filters = config["NB_FILTERS"]
 
-			if config["SG"] != -1:
+			if config["SG"] == -1:
 				weights = None
 			else:
 				weights=[weight[i]]
