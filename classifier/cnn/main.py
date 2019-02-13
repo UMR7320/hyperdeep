@@ -176,22 +176,49 @@ def predict(text_file, model_file, config, vectors_file):
 	# preprocess data
 	preprocessing = PreProcessing()
 	preprocessing.loadData(text_file, model_file, config, create_dictionnary = False)
-	#preprocessing.loadEmbeddings(model_file, config, vectors_file)
-	
-	# load and predict
+
+	# get dictionnaries
+	dictionaries = preprocessing.dictionaries
+
+	print("----------------------------")
+	print("PREDICTION")
+	print("----------------------------")
 	model = load_model(model_file)
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
 	predictions = model.predict(x_data)
+	print(predictions)
 
 	print("----------------------------")
 	print("DECONVOLUTION")
 	print("----------------------------")
 
-	# load deconv_model
-	deconv_model = load_model(model_file + ".deconv")
-	
+	# CHANNEL BY CHANNEL
+	deconv = []
+	for channel in range(len(x_data)):
+		deconv_model = load_model(model_file + ".deconv" + str(channel))
+		deconv += [deconv_model.predict(x_data[channel])]
+
+	# READ PREDICTION SENTENCE BY SENTENCE
+	for sentence_nb in range(len(x_data[channel])):
+		sentence = {}
+		sentence["sentence"] = ""
+		sentence["prediction"] = predictions[sentence_nb].tolist()
+
+		# READ SENTENCE WORD BY WORD
+		for i in range(config["SEQUENCE_SIZE"]):
+			index = x_data[channel][sentence_nb][i]			
+
+			word = ""
+			for channel in range(len(x_data)):
+				word += dictionaries[channel]["index_word"].get(index, "PAD")
+				word += "*" + str(np.sum(deconv[channel][sentence_nb][i]))
+				word += "**"
+			word = word[:-1] + "0" # attention...
+			sentence["sentence"] += word + " "
+		result.append(sentence)
+
 	"""
 	try:
 		# SETUP THE DECONV LAYER WEIGHTS
@@ -207,8 +234,7 @@ def predict(text_file, model_file, config, vectors_file):
 	deconv = deconv_model.predict(x_data)
 	print("deconvolution", 	deconv.shape)
 	"""
-
-	my_dictionary = preprocessing.dictionaries
+	#my_dictionary = preprocessing.dictionaries
 
 	"""
 	print("----------------------------")
@@ -225,7 +251,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# Format result (prediction + deconvolution)
 	my_dictionary = preprocessing.my_dictionary
-	"""
+
 	for sentence_nb in range(len(x_data[0])):
 		sentence = {}
 		sentence["sentence"] = ""
@@ -244,19 +270,15 @@ def predict(text_file, model_file, config, vectors_file):
 			# Normalize values
 			# Very slow operation
 			# TODO: Optimize this part
-			"""
 			for part_nb, part in enumerate(["CODE", "LEMME", "FORME"]):
 				ratio = 255 / np.max(deconv_part[part_nb])
 				deconv_values[part] = deconv_part[part_nb]
 				deconv_values[part] = np.multiply(deconv_values[part], [ratio])
-			"""
 			# ------------------------
 			
-			"""
 			forme_values = deconv_values["FORME"]
 			code_values = deconv_values["CODE"]
 			lemme_values = deconv_values["LEMME"]
-			"""
 
 			# Create word entry
 			for i in range(config["SEQUENCE_SIZE"]):
@@ -264,7 +286,6 @@ def predict(text_file, model_file, config, vectors_file):
 				word = my_dictionary[0]["index_word"].get(index, "PAD")
 			
 				# READ ATTENTION 
-				"""
 				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
 					attention_value = 0
 				else:
@@ -272,9 +293,7 @@ def predict(text_file, model_file, config, vectors_file):
 						attention_value = attentions[sentence_nb][i-1]
 					except: # BUG WITH FILTER_SIZE > 3
 						attention_value = 0
-				"""
 
-				"""
 				# deconvolution forme
 				word = word_args[0] + "*" + str(np.sum(forme_values[i]))
 				# deconvolution code
@@ -286,7 +305,6 @@ def predict(text_file, model_file, config, vectors_file):
 				except:
 					pass # PAD VALUE
 				word += "*" + str(float(attention_value))
-				"""
 
 				word = word + "*1*1"
 				sentence["sentence"] += word + " "
@@ -302,7 +320,6 @@ def predict(text_file, model_file, config, vectors_file):
 				#forme_values = deconv[sentence_nb][i]
 				
 				# READ ATTENTION 
-				"""
 				if i == 0 or i == len(x_data[sentence_nb])-1: # because shape (?,48,1)
 					attention_value = 0
 				else:
@@ -310,7 +327,6 @@ def predict(text_file, model_file, config, vectors_file):
 						attention_value = attentions[sentence_nb][i-1]
 					except: # BUG WITH FILTER_SIZE > 3
 						attention_value = 0
-				"""
 
 				# WRITE WORD ENTRY
 				# deconvolution
@@ -323,7 +339,6 @@ def predict(text_file, model_file, config, vectors_file):
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------
-		"""
 		raw_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
 		rgb_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
 		final_image = np.zeros( (config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
