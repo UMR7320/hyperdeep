@@ -69,6 +69,7 @@ class PreProcessing:
 		#labels, texts = zip(*data)
 
 		dictionaries, datas = tokenize(texts, model_file, create_dictionnary, config)
+		#print(dictionaries[1])
 
 		for i, dictionary in enumerate(dictionaries):
 			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
@@ -127,6 +128,7 @@ def train(corpus_file, model_file, config):
 	# preprocess data
 	preprocessing = PreProcessing()
 	preprocessing.loadData(corpus_file, model_file, config, create_dictionnary = True)
+	
 	if config["SG"] != -1:
 		preprocessing.loadEmbeddings(model_file, config)
 	else:
@@ -210,10 +212,7 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
-				if channel != 0:
-					word += "*0"
-				else:	
-					word += "*" + str(np.sum(deconv[channel][sentence_nb][i]))
+				word += "*" + str(np.sum(deconv[channel][sentence_nb][i]))
 				word += "**"
 			word = word[:-1] + "0" # attention...
 			sentence["sentence"] += word + " "
@@ -235,8 +234,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# CREATE THE GIF ANIMATION
 	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
-
-
+	
 	return result
 
 
