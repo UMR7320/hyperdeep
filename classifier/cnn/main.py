@@ -50,7 +50,7 @@ class PreProcessing:
 					try:
 						sequence[i] += arg + " "
 					except:
-						print("error with", args)
+						sequence += ["PAD "]
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, []) + [sequence[i]]
 
@@ -219,6 +219,7 @@ def predict(text_file, model_file, config, vectors_file):
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------
+		"""
 		deconv_image = np.zeros( (config["SEQUENCE_SIZE"]*len(x_data), config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
 		for channel in range(len(x_data)):
 			for y in range(config["SEQUENCE_SIZE"]):
@@ -234,7 +235,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# CREATE THE GIF ANIMATION
 	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
-	
+	"""
 	return result
 
 
