@@ -77,16 +77,20 @@ class CNNModel:
 		# ---------------------------------------
 		# MULTI CHANNELS CONVOLUTION
 		# ---------------------------------------
-		inputs = [0]*3
-		embedding = [0]*3
-		reshape = [0]*3
-		conv = [0]*3
-		deconv = [0]*3
-		deconv_model = [0]*3
-		pool = [0]*3
-		flat = [0]*3
+		if config["TG"]:
+			nb_channels = 3
+		else:
+			nb_channels = 1
+		inputs = [0]*nb_channels
+		embedding = [0]*nb_channels
+		reshape = [0]*nb_channels
+		conv = [0]*nb_channels
+		deconv = [0]*nb_channels
+		deconv_model = [0]*nb_channels
+		pool = [0]*nb_channels
+		flat = [0]*nb_channels
 
-		for i in range(3):
+		for i in range(nb_channels):
 			print("CHANNELS ", i)
 
 			# INPUTS
@@ -131,8 +135,11 @@ class CNNModel:
 			print("-"*20)
 		
 		# merge
-		merged = concatenate([flat[0], flat[1], flat[2]])
-		print("merged", merged.shape)
+		if config["TG"]:
+			merged = concatenate([flat[0], flat[1], flat[2]])
+			print("merged", merged.shape)
+		else:
+			merged = flat[0]
 
 		# dropout
 		dropout = Dropout(config["DROPOUT_VAL"])(merged)
