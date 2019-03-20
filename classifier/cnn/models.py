@@ -28,51 +28,6 @@ class CNNModel:
 		print("-"*20)
 		print("CREATE MODEL")
 		print("-"*20)
-
-		"""
-		inputs = Input(shape=(config["SEQUENCE_SIZE"],), dtype='int32')
-		
-		# ---------------
-		# EMBEDDING LAYER
-		# ---------------
-		embedding = Embedding(
-			config["vocab_size"]+1, # due to mask_zero
-			config["EMBEDDING_DIM"],
-			input_length=config["SEQUENCE_SIZE"],
-			weights=weight,
-			trainable=True
-		)(inputs)
-		print("embedding : ", embedding.shape)
-		
-		reshape = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding)
-		print("reshape : ", reshape.shape)
-
-		# ---------------------------------------
-		# CONVOLUTION (FOR CNN+LSTM MODEL)
-		# ---------------------------------------
-		filter = config["FILTER_SIZES"]
-		if config["TG"]:
-			conv_width = int(config["EMBEDDING_DIM"]/3)
-		else:
-			conv_width = config["EMBEDDING_DIM"]
-		conv = Conv2D(config["NB_FILTERS"], (filter, conv_width), strides=(1, conv_width), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape)	
-		print("convolution :", conv.shape)
-
-		# -----------------------------------------
-		# DECONVOLUTION (FOR CNN+LSTM MODEL)
-		# -----------------------------------------
-		deconv = Conv2DTranspose(1, (filter, conv_width), strides=(1, conv_width), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv)
-		print("deconvolution :", deconv.shape)
-		deconv_model = Model(inputs=inputs, outputs=deconv)
-
-		# --------------------
-		# ! ONLY FOR CNN MODEL
-		# --------------------	
-		maxpool = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - filter + 1, 1), strides=(1, conv_width), padding='valid', data_format='channels_last')(conv)
-		print("MaxPooling2D :", maxpool.shape)
-		maxpool = Flatten()(maxpool)
-		print("flatten :", maxpool.shape)
-		"""
 		
 		# ---------------------------------------
 		# MULTI CHANNELS CONVOLUTION
@@ -87,6 +42,7 @@ class CNNModel:
 		conv = [0]*nb_channels
 		deconv = [0]*nb_channels
 		deconv_model = [0]*nb_channels
+		conv_representation = [0]*nb_channels
 		pool = [0]*nb_channels
 		flat = [0]*nb_channels
 
@@ -120,29 +76,65 @@ class CNNModel:
 			print("conv", i,  conv[i].shape)
 
 			# DECONVOLUTION
-			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
-			deconv_model[i] = Model(inputs=inputs[i], outputs=deconv[i])
+			deconv[i] = Conv2DTranspose(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
 			print("deconv", i,  deconv[i].shape)
-			
-			# MAXPOOLING
-			pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
-			print("pool", i,  pool[i].shape)
 
-			# FLATTEN
-			flat[i] = Flatten()(pool[i])
-			print("flat", i,  flat[i].shape)
+			# SUM = SENT REPRESENTATION
+			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(deconv[i])
+			print("Lambda :", i, conv_representation[i].shape)
+			deconv_model[i] = Model(inputs=inputs[i], outputs=conv_representation[i])
 
 			print("-"*20)
 		
-		# merge
+		# ----------------------------------------------------		
+		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
+		# ----------------------------------------------------
 		if config["TG"]:
-			merged = concatenate([flat[0], flat[1], flat[2]])
+			merged = multiply([conv_representation[0], conv_representation[1], conv_representation[2]])
 			print("merged", merged.shape)
 		else:
-			merged = flat[0]
+			merged = conv_representation[0]
 
-		# dropout
-		dropout = Dropout(config["DROPOUT_VAL"])(merged)
+		# ----------
+		# LSTM LAYER
+		# ----------
+		lstm = LSTM(config["LSTM_SIZE"], return_sequences=True)(merged) #(embedding) <=== Select here with or without convolution
+		print("lstm :", lstm.shape)
+
+		# ---------------
+		# ATTENTION LAYER
+		# ---------------
+		attention = TimeDistributed(Dense(1, activation='tanh'))(lstm) 
+		print("TimeDistributed :", attention.shape)
+
+		# reshape Attention
+		attention = Flatten()(attention)
+		print("Flatten :", attention.shape)
+		
+		attention = Activation('softmax')(attention)
+		print("Activation :", attention.shape)
+
+		# Observe attention here
+		attention_model = Model(inputs=inputs, outputs=attention)
+
+		# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
+		attention = RepeatVector(config["LSTM_SIZE"])(attention)
+		print("RepeatVector :", attention.shape)
+		
+		attention = Permute([2, 1])(attention)
+		print("Permute :", attention.shape)
+
+		# apply the attention		
+		sent_representation = multiply([lstm, attention])
+		print("Multiply :", sent_representation.shape)
+		
+		sent_representation = Lambda(lambda xin: K.sum(xin, axis=1))(sent_representation)
+		print("Lambda :", sent_representation.shape)
+
+		# -------------
+		# DROPOUT LAYER
+		# -------------
+		dropout = Dropout(config["DROPOUT_VAL"])(sent_representation)
 		print("Dropout :", dropout.shape)
 
 		# -----------------
@@ -172,11 +164,5 @@ class CNNModel:
 
 		print("TRAINING MODEL")
 		print(model.summary())
-
-		#print("DECONV MODEL")
-		#print(deconv_model.summary())
-
-		#print("ATTENTION MODEL")
-		#print(attention_model.summary())
 
 		return model, deconv_model
