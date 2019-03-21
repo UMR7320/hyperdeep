@@ -90,7 +90,7 @@ class CNNModel:
 		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
 		# ----------------------------------------------------
 		if config["TG"]:
-			merged = multiply([conv_representation[0], conv_representation[1], conv_representation[2]])
+			merged = concatenate([conv_representation[0], conv_representation[1], conv_representation[2]])
 			print("merged", merged.shape)
 		else:
 			merged = conv_representation[0]
