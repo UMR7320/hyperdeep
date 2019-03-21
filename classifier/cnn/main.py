@@ -150,6 +150,7 @@ def train(corpus_file, model_file, config):
 	callbacks_list = [checkpoint]
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
+	"""
 	for i, deconv in enumerate(deconv_model):
 		# SETUP THE DECONV LAYER WEIGHTS
 		for layer in deconv.layers:	
@@ -160,6 +161,7 @@ def train(corpus_file, model_file, config):
 
 		# save deconv model
 		deconv.save(model_file + ".deconv" + str(i))
+	"""
 
 	# get score
 	model = load_model(model_file)

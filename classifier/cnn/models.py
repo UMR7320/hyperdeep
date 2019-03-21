@@ -80,7 +80,7 @@ class CNNModel:
 			print("deconv", i,  deconv[i].shape)
 
 			# SUM = SENT REPRESENTATION
-			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(deconv[i])
+			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
 			print("Lambda :", i, conv_representation[i].shape)
 			deconv_model[i] = Model(inputs=inputs[i], outputs=conv_representation[i])
 
@@ -128,7 +128,7 @@ class CNNModel:
 		sent_representation = multiply([lstm, attention])
 		print("Multiply :", sent_representation.shape)
 		
-		sent_representation = Lambda(lambda xin: K.sum(xin, axis=1))(sent_representation)
+		sent_representation = Lambda(lambda xin: K.sum(xin, axis=2))(sent_representation)
 		print("Lambda :", sent_representation.shape)
 
 		# -------------
