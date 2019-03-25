@@ -115,7 +115,7 @@ class CNNModel:
 		print("Activation :", attention.shape)
 
 		# Observe attention here
-		attention_model = Model(inputs=inputs, outputs=attention)
+		#attention_model = Model(inputs=inputs, outputs=attention)
 
 		# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
 		attention = RepeatVector(config["LSTM_SIZE"])(attention)
@@ -165,4 +165,4 @@ class CNNModel:
 		print("TRAINING MODEL")
 		print(model.summary())
 
-		return model, deconv_model
+		return model, deconv_model, attention_model

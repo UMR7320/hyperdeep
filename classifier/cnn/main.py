@@ -5,7 +5,9 @@ import timeit
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv2D
+from keras.layers import Conv2D, Conv2DTranspose
+from keras.models import Model
+
 
 from classifier.cnn import models
 from skipgram.skipgram_with_NS import create_vectors
@@ -185,11 +187,11 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 	print("PREDICTION")
 	print("----------------------------")
-	model = load_model(model_file)
+	classifier = load_model(model_file)
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
-	predictions = model.predict(x_data)
+	predictions = classifier.predict(x_data)
 	print(predictions)
 
 	print("----------------------------")
@@ -197,10 +199,22 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 
 	# CHANNEL BY CHANNEL
-	deconv = []
-	for channel in range(len(x_data)):
-		deconv_model = load_model(model_file + ".deconv" + str(channel))
-		deconv += [deconv_model.predict(x_data[channel])]
+	transposed = False
+	i = 0
+	for layer in classifier.layers:	
+		print(layer)
+		if type(layer) is Conv2DTranspose:
+			transposed = True
+			i += 1
+		elif transposed:
+			break
+		else:
+			i += 1
+	layer_outputs = [layer.output for layer in classifier.layers[:i]] 
+	print(layer_outputs)
+	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	deconv = deconv_model.predict(x_data)
+	#deconv += [deconv_model.predict(x_data[channel])]
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
