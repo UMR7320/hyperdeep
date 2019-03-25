@@ -144,26 +144,13 @@ def train(corpus_file, model_file, config):
 
 	# create and get model
 	cnn_model = models.CNNModel()
-	model, deconv_model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
+	model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
 
 	# train model
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 	callbacks_list = [checkpoint]
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
-
-	for i, deconv in enumerate(deconv_model):
-		# SETUP THE DECONV LAYER WEIGHTS
-		"""
-		for layer in deconv.layers:	
-			if type(layer) is Conv2D:
-				deconv_weights = layer.get_weights()[0]
-		deconv_bias = deconv.layers[-1].get_weights()[1]
-		deconv.layers[-1].set_weights([deconv_weights, deconv_bias])
-		"""
-		# save deconv model
-		deconv.save(model_file + ".deconv" + str(i))
-
 
 	# get score
 	model = load_model(model_file)
@@ -202,7 +189,6 @@ def predict(text_file, model_file, config, vectors_file):
 	transposed = False
 	i = 0
 	for layer in classifier.layers:	
-		print(layer)
 		if type(layer) is Conv2DTranspose:
 			transposed = True
 			i += 1
@@ -211,7 +197,6 @@ def predict(text_file, model_file, config, vectors_file):
 		else:
 			i += 1
 	layer_outputs = [layer.output for layer in classifier.layers[:i]] 
-	print(layer_outputs)
 	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	deconv = deconv_model.predict(x_data)
 	#deconv += [deconv_model.predict(x_data[channel])]

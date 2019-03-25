@@ -82,7 +82,6 @@ class CNNModel:
 			# SUM = SENT REPRESENTATION
 			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
 			print("Lambda :", i, conv_representation[i].shape)
-			deconv_model[i] = Model(inputs=inputs[i], outputs=conv_representation[i])
 
 			print("-"*20)
 		
@@ -134,7 +133,11 @@ class CNNModel:
 		# -------------
 		# DROPOUT LAYER
 		# -------------
-		dropout = Dropout(config["DROPOUT_VAL"])(sent_representation)
+		if config["ENABLE_LSTM"]:
+			dropout = Dropout(config["DROPOUT_VAL"])(sent_representation)
+		else:
+			dropout = Flatten()(merged)
+			dropout = Dropout(config["DROPOUT_VAL"])(dropout)
 		print("Dropout :", dropout.shape)
 
 		# -----------------
@@ -165,4 +168,4 @@ class CNNModel:
 		print("TRAINING MODEL")
 		print(model.summary())
 
-		return model, deconv_model, attention_model
+		return model
