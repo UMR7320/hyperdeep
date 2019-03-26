@@ -67,21 +67,25 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
-			# RESHAPE
-			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
-			print("reshape", i,  reshape[i].shape)
-
 			# CONVOLUTION
-			conv[i] = Conv2D(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(reshape[i])
+			conv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], activation='relu')(embedding[i])
 			print("conv", i,  conv[i].shape)
 
+			pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
+			print("pool", i,  pool[i].shape)
+
+			# RESHAPE
+			#reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
+			#print("reshape", i,  reshape[i].shape)
+
 			# DECONVOLUTION
-			deconv[i] = Conv2DTranspose(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
-			print("deconv", i,  deconv[i].shape)
+			#deconv[i] = Conv2DTranspose(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
+			#print("deconv", i,  deconv[i].shape)
+
 
 			# SUM = SENT REPRESENTATION
-			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
-			print("Lambda :", i, conv_representation[i].shape)
+			#conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(conv[i])
+			#print("Lambda :", i, conv_representation[i].shape)
 
 			print("-"*20)
 		
@@ -89,10 +93,10 @@ class CNNModel:
 		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
 		# ----------------------------------------------------
 		if config["TG"]:
-			merged = concatenate([conv_representation[0], conv_representation[1], conv_representation[2]])
+			merged = concatenate([pool[0], pool[1], pool[2]])
 			print("merged", merged.shape)
 		else:
-			merged = conv_representation[0]
+			merged = pool[0]
 
 		# ----------
 		# LSTM LAYER

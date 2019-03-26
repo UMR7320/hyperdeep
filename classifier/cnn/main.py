@@ -5,7 +5,7 @@ import timeit
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv2D, Conv2DTranspose
+from keras.layers import Conv1D, Conv2D, Conv2DTranspose
 from keras.models import Model
 
 
@@ -176,30 +176,29 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 	classifier = load_model(model_file)
 	x_data = []
+
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
 	predictions = classifier.predict(x_data)
-	print(predictions)
 
 	print("----------------------------")
 	print("DECONVOLUTION")
 	print("----------------------------")
-
-	# CHANNEL BY CHANNEL
-	transposed = False
+	# GET THE CONVOLUTIONAL LAYERS
+	isConvLayer = False
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Conv2DTranspose:
-			transposed = True
+		if type(layer) is Conv1D:
+			isConvLayer = True
 			i += 1
-		elif transposed:
+		elif isConvLayer:
 			break
 		else:
 			i += 1
 	layer_outputs = [layer.output for layer in classifier.layers[:i]] 
 	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	deconv_model.summary()
 	deconv = deconv_model.predict(x_data)
-	#deconv += [deconv_model.predict(x_data[channel])]
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
@@ -213,7 +212,11 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
-				word += "*" + str(np.sum(deconv[channel][sentence_nb][i]))
+				#print(deconv[sentence_nb][-(channel+1)+3].shape)
+				if i == 0 or i >= config["SEQUENCE_SIZE"]-2:
+					word += "*0"
+				else:
+					word += "*" + str(np.sum(deconv[-(channel+1)][sentence_nb][i]))
 				word += "**"
 			word = word[:-1] + "0" # attention...
 			sentence["sentence"] += word + " "
@@ -238,5 +241,3 @@ def predict(text_file, model_file, config, vectors_file):
 	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
 	"""
 	return result
-
-
