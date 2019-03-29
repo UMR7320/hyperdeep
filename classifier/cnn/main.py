@@ -186,15 +186,13 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 	# GET THE CONVOLUTIONAL LAYERS
 	isConvLayer = False
+	last_conv_layer = 0
 	i = 0
 	for layer in classifier.layers:	
 		if type(layer) is Conv1D:
-			isConvLayer = True
-			i += 1
-		elif isConvLayer:
-			break
-		else:
-			i += 1
+			last_conv_layer = i
+		i += 1
+	print(last_conv_layer)
 	layer_outputs = [layer.output for layer in classifier.layers[:i]] 
 	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	deconv_model.summary()
@@ -212,11 +210,11 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
-				#print(deconv[sentence_nb][-(channel+1)+3].shape)
-				if i == 0 or i >= config["SEQUENCE_SIZE"]-2:
-					word += "*0"
-				else:
-					word += "*" + str(np.sum(deconv[-(channel+1)][sentence_nb][i]))
+
+				# TODO ====> FIND THE RIGHT LAYER
+				print(deconv[-(channel+4)][sentence_nb].shape)
+				word += "*" + str(np.sum(deconv[-(channel+4)][sentence_nb][i]))
+
 				word += "**"
 			word = word[:-1] + "0" # attention...
 			sentence["sentence"] += word + " "
