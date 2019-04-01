@@ -190,13 +190,14 @@ def predict(text_file, model_file, config, vectors_file):
 	i = 0
 	for layer in classifier.layers:	
 		if type(layer) is Conv1D:
-			last_conv_layer = i
+			last_conv_layer = i+1
 		i += 1
-	print(last_conv_layer)
-	layer_outputs = [layer.output for layer in classifier.layers[:i]] 
+	layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
 	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	deconv_model.summary()
 	deconv = deconv_model.predict(x_data)
+	for channel in range(len(x_data)):
+		print(deconv[-(channel+1)][0].shape)
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
@@ -212,8 +213,11 @@ def predict(text_file, model_file, config, vectors_file):
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
 
 				# TODO ====> FIND THE RIGHT LAYER
-				print(deconv[-(channel+4)][sentence_nb].shape)
-				word += "*" + str(np.sum(deconv[-(channel+4)][sentence_nb][i]))
+				#print(deconv[-(channel+4)][sentence_nb].shape)
+				if i == 0 or i == config["SEQUENCE_SIZE"]:
+					word += "*1"
+				else:
+					word += "*" + str(np.sum(deconv[-(channel+1)][sentence_nb][i-2]))
 
 				word += "**"
 			word = word[:-1] + "0" # attention...

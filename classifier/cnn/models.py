@@ -67,30 +67,34 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
+			# RESHAPE
+			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
+			print("reshape", i,  reshape[i].shape)
+
 			# CONVOLUTION
-			conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
+			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
 			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"]+1, padding='valid', kernel_initializer='normal', activation='relu')(conv[i])
 			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"]+2, padding='valid', kernel_initializer='normal', activation='relu')(conv[i])
+			conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
 			print("conv", i,  conv[i].shape)
 
-			pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
-			print("pool", i,  pool[i].shape)
+			#pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
+			#print("pool", i,  pool[i].shape)
 
 			# RESHAPE
-			#reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
+			#reshape[i] = Reshape((config["SEQUENCE_SIZE"], 1, config["EMBEDDING_DIM"]))(embedding[i])
 			#print("reshape", i,  reshape[i].shape)
 
 			# DECONVOLUTION
-			deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
-			deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
+			#deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
+			#deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
 
-			#deconv[i] = Conv2DTranspose(config["NB_FILTERS"], (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
-			#print("deconv", i,  deconv[i].shape)
-
+			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
+			print("deconv", i,  deconv[i].shape)
 
 			# SUM = SENT REPRESENTATION
-			#conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(conv[i])
-			#print("Lambda :", i, conv_representation[i].shape)
+			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
+			print("Lambda :", i, conv_representation[i].shape)
 
 			print("-"*20)
 		
@@ -98,11 +102,11 @@ class CNNModel:
 		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
 		# ----------------------------------------------------
 		if config["TG"]:
-			merged = concatenate([deconv[0], deconv[1], deconv[2]])
+			merged = concatenate([conv_representation[0], conv_representation[1], conv_representation[2]])
 			#merged = multiply([conv[0], conv[1], conv[2]])
 			print("merged", merged.shape)
 		else:
-			merged = deconv[0]
+			merged = conv_representation[0]
 
 		# ----------
 		# LSTM LAYER
