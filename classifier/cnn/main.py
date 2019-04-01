@@ -218,12 +218,12 @@ def predict(text_file, model_file, config, vectors_file):
 				else:
 					attention = sum(deconv[-(channel+1)][sentence_nb][i-2])*1000
 				"""
-				value = sum(sum(deconv[-(channel+1)][sentence_nb][i]))**4	# TDS
-				value = (deconv[-(channel+1)][sentence_nb][i]*100)**4 		# ATTENTION
-				word += "*" + str(value)
+				tds = sum(sum(deconv[-(channel+1)][sentence_nb][i]))**4	# TDS
+				attention = (deconv[-(channel+1)][sentence_nb][i]*100)**4 		# ATTENTION
+				word += "*" + str(tds)
 
 				word += "**"
-			word = word[:-1] + "0" # attention...
+			word = word[:-1] + str(attention) # attention...
 			sentence["sentence"] += word + " "
 		result.append(sentence)
 
