@@ -187,17 +187,26 @@ def predict(text_file, model_file, config, vectors_file):
 	# GET THE CONVOLUTIONAL LAYERS
 	isConvLayer = False
 	last_conv_layer = 0
+	last_attention_layer = 0
 	i = 0
 	for layer in classifier.layers:	
 		if type(layer) is Conv2DTranspose:
 			last_conv_layer = i+1
+		elif type(layer) is Activation:
+			last_attention_layer = i+1
 		i += 1
+	
+	# TDS
 	layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
 	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	deconv_model.summary()
-	deconv = deconv_model.predict(x_data)
-	for channel in range(len(x_data)):
-		print(deconv[-(channel+1)][0].shape)
+	tds = deconv_model.predict(x_data)
+
+	# ATTENTION
+	layer_outputs2 = [layer.output for layer in classifier.layers[:last_attention_layer]] 
+	attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
+	attention_model.summary()
+	attention = attention_model.predict(x_data)
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
@@ -208,6 +217,7 @@ def predict(text_file, model_file, config, vectors_file):
 		# READ SENTENCE WORD BY WORD
 		for i in range(config["SEQUENCE_SIZE"]):
 			word = ""
+			attention_value = 0
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
@@ -218,12 +228,12 @@ def predict(text_file, model_file, config, vectors_file):
 				else:
 					attention = sum(deconv[-(channel+1)][sentence_nb][i-2])*1000
 				"""
-				tds = sum(sum(deconv[-(channel+1)][sentence_nb][i]))**4	# TDS
-				attention = (deconv[-(channel+1)][sentence_nb][i]*100)**4 		# ATTENTION
-				word += "*" + str(tds)
-
+				tds_value = sum(sum(tds[-(channel+1)][sentence_nb][i]))**4		# TDS
+				attention_value += ((attention[-(channel+1)][sentence_nb][i]*100)**4)*1000 	# ATTENTION
+				word += "*" + str(tds_value)
 				word += "**"
-			word = word[:-1] + str(attention) # attention...
+			print(attention_value)
+			word = word[:-1] + str(attention_value) # attention...
 			sentence["sentence"] += word + " "
 		result.append(sentence)
 
