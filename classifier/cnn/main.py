@@ -189,7 +189,7 @@ def predict(text_file, model_file, config, vectors_file):
 	last_conv_layer = 0
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Activation:
+		if type(layer) is Conv1D:
 			last_conv_layer = i+1
 		i += 1
 	layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
@@ -215,8 +215,7 @@ def predict(text_file, model_file, config, vectors_file):
 				if i == 0 or i == config["SEQUENCE_SIZE"]:
 					word += "*1"
 				else:
-					attention = deconv[-(channel+1)][sentence_nb][i-2]*1000
-					print("Attention:", attention)
+					attention = sum(deconv[-(channel+1)][sentence_nb][i-2])*1000
 					word += "*" + str(attention)
 
 				word += "**"
