@@ -212,14 +212,12 @@ def predict(text_file, model_file, config, vectors_file):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
 
-				"""
 				if i == 0 or i == config["SEQUENCE_SIZE"]:
 					word += "*1"
 				else:
-				"""
-				attention = deconv[-(channel+1)][sentence_nb][i]*1000
-				print("Attention:", attention)
-				word += "*" + str(attention)
+					attention = deconv[-(channel+1)][sentence_nb][i-2]*1000
+					print("Attention:", attention)
+					word += "*" + str(attention)
 
 				word += "**"
 			word = word[:-1] + "0" # attention...
