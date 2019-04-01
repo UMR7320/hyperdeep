@@ -189,7 +189,7 @@ def predict(text_file, model_file, config, vectors_file):
 	last_conv_layer = 0
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Conv1D:
+		if type(layer) is Conv2DTranspose:
 			last_conv_layer = i+1
 		i += 1
 	layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
