@@ -1,13 +1,13 @@
 import random
 import numpy as np
 import timeit
+import math
 
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation
 from keras.models import Model
-
 
 from classifier.cnn import models
 from skipgram.skipgram_with_NS import create_vectors
@@ -189,7 +189,7 @@ def predict(text_file, model_file, config, vectors_file):
 	last_conv_layer = 0
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Conv1D:
+		if type(layer) is Conv2DTranspose:
 			last_conv_layer = i+1
 		i += 1
 	layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
@@ -212,11 +212,15 @@ def predict(text_file, model_file, config, vectors_file):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
 
+				"""
 				if i == 0 or i == config["SEQUENCE_SIZE"]:
 					word += "*1"
 				else:
 					attention = sum(deconv[-(channel+1)][sentence_nb][i-2])*1000
-					word += "*" + str(attention)
+				"""
+				value = sum(sum(deconv[-(channel+1)][sentence_nb][i]))**4	# TDS
+				value = (deconv[-(channel+1)][sentence_nb][i]*100)**4 		# ATTENTION
+				word += "*" + str(value)
 
 				word += "**"
 			word = word[:-1] + "0" # attention...
