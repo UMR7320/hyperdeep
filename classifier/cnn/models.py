@@ -15,7 +15,7 @@ from keras.layers import RepeatVector
 from keras.layers import Permute
 from keras.layers import Lambda
 from keras.layers import Conv1D, UpSampling1D, Conv2D, Conv2DTranspose, MaxPooling1D, MaxPooling2D, GlobalMaxPooling1D,  Embedding, Reshape
-from keras.layers import Input, Embedding, LSTM, Dense
+from keras.layers import Input, Embedding, LSTM, GRU, Bidirectional, Dense
 from keras.layers import Lambda
 from keras.layers import concatenate
 from keras.utils import np_utils
@@ -76,9 +76,7 @@ class CNNModel:
 			#print("reshape", i,  reshape[i].shape)
 
 			# CONVOLUTION
-			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
-			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"]+1, padding='valid', kernel_initializer='normal', activation='relu')(conv[i])
-			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"]+2, padding='valid', kernel_initializer='normal', activation='relu')(conv[i])
+			conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
 			#conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
 			#print("conv", i,  conv[i].shape)
 
@@ -113,35 +111,35 @@ class CNNModel:
 			# ----------
 			# LSTM LAYER
 			# ----------
-			lstm[i] = LSTM(config["LSTM_SIZE"], return_sequences=False)(embedding[i])
+			lstm[i] = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True))(conv[i])
 			print("lstm :", lstm[i].shape)
 
 			# ---------------
 			# ATTENTION LAYER
 			# ---------------
-			#attention[i] = TimeDistributed(Dense(1, activation='tanh'))(lstm[i]) 
-			#print("TimeDistributed :", attention[i].shape)
+			attention[i] = TimeDistributed(Dense(1, activation='tanh'))(lstm[i]) 
+			print("TimeDistributed :", attention[i].shape)
 
 			# reshape Attention
-			#attention[i] = Flatten()(attention[i])
-			#print("Flatten :", attention[i].shape)
+			attention[i] = Flatten()(attention[i])
+			print("Flatten :", attention[i].shape)
 			
-			attention[i] = Activation('softmax')(lstm[i])
+			attention[i] = Activation('softmax')(attention[i])
 			print("Activation :", attention[i].shape)
 
 			# Observe attention here
 			#attention_model = Model(inputs=inputs, outputs=attention)
 
 			# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
-			#attention[i] = RepeatVector(config["LSTM_SIZE"])(attention[i])
-			#print("RepeatVector :", attention[i].shape)
+			attention[i] = RepeatVector(config["LSTM_SIZE"]*2)(attention[i])
+			print("RepeatVector :", attention[i].shape)
 			
-			#attention[i] = Permute([2, 1])(attention[i])
-			#print("Permute :", attention[i].shape)
+			attention[i] = Permute([2, 1])(attention[i])
+			print("Permute :", attention[i].shape)
 
 			# apply the attention		
-			#sent_representation[i] = multiply([lstm[i], attention[i]])
-			#print("Multiply :", sent_representation[i].shape)
+			sent_representation[i] = multiply([lstm[i], attention[i]])
+			print("Multiply :", sent_representation[i].shape)
 			
 			#sent_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(sent_representation[i])
 			#print("Lambda :", sent_representation[i].shape)
@@ -152,11 +150,11 @@ class CNNModel:
 		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
 		# ----------------------------------------------------
 		if config["TG"]:
-			merged = concatenate([attention[0], attention[1], attention[2]])
+			merged = concatenate([sent_representation[0], sent_representation[1], sent_representation[2]])
 			#merged = multiply([conv[0], conv[1], conv[2]])
 			print("merged", merged.shape)
 		else:
-			merged = attention[0]
+			merged = sent_representation[0]
 
 		# ----------
 		# LSTM LAYER
@@ -201,8 +199,8 @@ class CNNModel:
 		#if config["ENABLE_LSTM"]:
 		#	dropout = Dropout(config["DROPOUT_VAL"])(sent_representation)
 		#else:
-		#	dropout = Flatten()(merged)
-		dropout = Dropout(config["DROPOUT_VAL"])(merged)
+		dropout = Flatten()(merged)
+		dropout = Dropout(config["DROPOUT_VAL"])(dropout)
 		print("Dropout :", dropout.shape)
 
 		# -----------------
