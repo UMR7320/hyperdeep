@@ -228,11 +228,10 @@ def predict(text_file, model_file, config, vectors_file):
 				if i == 0 or i == config["SEQUENCE_SIZE"]-1:
 					tds_value = 0
 				else:
-					tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])	# TDS
+					tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
+					#attention_value += attention[-(channel+1)][sentence_nb][i-1]	# ATTENTION
+					attention_value = attention[-1][sentence_nb][i-1]				# ATTENTION
 
-				#tds_value = sum(tds[-(channel+1)][sentence_nb][i])**4		# TDS
-				if attention_model:
-					attention_value += ((attention[-(channel+1)][sentence_nb][i]*100)**4)*1000 	# ATTENTION
 				word += "*" + str(tds_value)
 				word += "**"
 
