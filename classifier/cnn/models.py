@@ -146,17 +146,17 @@ class CNNModel:
 			if config["TG"]:
 				merged = concatenate(pool)
 			else:
-				merged = concatenate(pool[0])
+				merged = pool[0]
 		elif not config["ENABLE_CONV"] and config["ENABLE_LSTM"]: 	# RNN
 			if config["TG"]:
 				merged = concatenate(embedding)
 			else:
-				merged = concatenate(embedding[0])
+				merged = embedding[0]
 		elif config["ENABLE_LSTM"] and config["ENABLE_CONV"]:		# CNN + RNN
 			if config["TG"]:
 				merged = concatenate(conv)
 			else:
-				merged = concatenate(conv[0])
+				merged = conv[0]
 		print("merged", merged.shape)
 
 		# ----------
