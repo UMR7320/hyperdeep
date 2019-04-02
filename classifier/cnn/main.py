@@ -236,7 +236,7 @@ def predict(text_file, model_file, config, vectors_file):
 			if not attention or i == 0 or i == config["SEQUENCE_SIZE"]-1:
 				attention_value = 0
 			else:
-				attention_value = attention[-1][sentence_nb][i-1]					# ATTENTION
+				attention_value = (attention[-1][sentence_nb][i-1])				# ATTENTION
 
 			word = word[:-1] + str(attention_value) # attention...
 			sentence["sentence"] += word + " "
