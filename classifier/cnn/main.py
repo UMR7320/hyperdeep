@@ -197,10 +197,13 @@ def predict(text_file, model_file, config, vectors_file):
 		i += 1
 	
 	# TDS
-	layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
-	deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-	deconv_model.summary()
-	tds = deconv_model.predict(x_data)
+	if config["ENABLE_CONV"]:
+		layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
+		deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+		deconv_model.summary()
+		tds = deconv_model.predict(x_data)
+	else:
+		tds = False
 
 	# ATTENTION
 	if config["ENABLE_LSTM"]:
@@ -209,7 +212,7 @@ def predict(text_file, model_file, config, vectors_file):
 		attention_model.summary()
 		attention = attention_model.predict(x_data)
 	else:
-		attention_model = False
+		attention = False
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
@@ -220,23 +223,24 @@ def predict(text_file, model_file, config, vectors_file):
 		# READ SENTENCE WORD BY WORD
 		for i in range(config["SEQUENCE_SIZE"]):
 			word = ""
-			attention_value = 0
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
-
-				if i == 0 or i == config["SEQUENCE_SIZE"]-1:
+				if not tds or i == 0 or i == config["SEQUENCE_SIZE"]-1:
 					tds_value = 0
 				else:
 					tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
-					#attention_value += attention[-(channel+1)][sentence_nb][i-1]	# ATTENTION
-					attention_value = attention[-1][sentence_nb][i-1]				# ATTENTION
-
 				word += "*" + str(tds_value)
 				word += "**"
 
+			if not attention or i == 0 or i == config["SEQUENCE_SIZE"]-1:
+				attention_value = 0
+			else:
+				attention_value = attention[-1][sentence_nb][i-1]					# ATTENTION
+
 			word = word[:-1] + str(attention_value) # attention...
 			sentence["sentence"] += word + " "
+		print("-"*20)
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------

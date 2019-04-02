@@ -72,10 +72,6 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
-			# RESHAPE
-			#reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
-			#print("reshape", i,  reshape[i].shape)
-
 			# CONVOLUTION
 			conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
 			#conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
@@ -93,16 +89,8 @@ class CNNModel:
 			# DECONVOLUTION
 			#deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
 			#deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
-
 			#deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
 			#print("deconv", i,  deconv[i].shape)
-
-			#reshape2[i] = Reshape((config["SEQUENCE_SIZE"], 1, config["EMBEDDING_DIM"]))(deconv[i])
-			#print("reshape", i,  reshape[i].shape)
-
-			# MAXPOOLING
-			#pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"], 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(reshape2[i])
-			#print("pool", i,  pool[i].shape)
 
 			# FLATTEN
 			#flat[i] = Flatten()(pool[i])
@@ -154,29 +142,33 @@ class CNNModel:
 		# ----------------------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
 		# ----------------------------------------------------
-		if config["TG"]:
-			if config["ENABLE_LSTM"]:
-				merged = concatenate([conv[0], conv[1], conv[2]])
-				print("merged", merged.shape)				
+		if config["ENABLE_CONV"] and not config["ENABLE_LSTM"] : 	# CNN
+			if config["TG"]:
+				merged = concatenate(pool)
 			else:
-				merged = concatenate([pool[0], pool[1], pool[2]])
-				print("merged", merged.shape)
-		else:
-			if config["ENABLE_LSTM"]:
-				merged = conv[0]
+				merged = concatenate(pool[0])
+		elif not config["ENABLE_CONV"] and config["ENABLE_LSTM"]: 	# RNN
+			if config["TG"]:
+				merged = concatenate(embedding)
 			else:
-				merged = pool[0]
+				merged = concatenate(embedding[0])
+		elif config["ENABLE_LSTM"] and config["ENABLE_CONV"]:		# CNN + RNN
+			if config["TG"]:
+				merged = concatenate(conv)
+			else:
+				merged = concatenate(conv[0])
+		print("merged", merged.shape)
 
 		# ----------
 		# LSTM LAYER
 		# ----------
-		lstm = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True))(merged)
-		print("lstm :", lstm.shape)
+		rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged)
+		print("rnn :", rnn.shape)
 
 		# ---------------
 		# ATTENTION LAYER
 		# ---------------
-		attention = TimeDistributed(Dense(1, activation='tanh'))(lstm) 
+		attention = TimeDistributed(Dense(1, activation='tanh'))(rnn) 
 		print("TimeDistributed :", attention.shape)
 
 		# reshape Attention
@@ -195,7 +187,7 @@ class CNNModel:
 		print("Permute :", attention.shape)
 
 		# apply the attention		
-		sent_representation = multiply([lstm, attention])
+		sent_representation = multiply([rnn, attention])
 		print("Multiply :", sent_representation.shape)
 		
 
@@ -206,6 +198,7 @@ class CNNModel:
 			dropout = Flatten()(sent_representation)
 		else:
 			dropout = Flatten()(merged)
+			
 		dropout = Dropout(config["DROPOUT_VAL"])(dropout)
 		print("Dropout :", dropout.shape)
 
