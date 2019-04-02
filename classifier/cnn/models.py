@@ -39,6 +39,7 @@ class CNNModel:
 		inputs = [0]*nb_channels
 		embedding = [0]*nb_channels
 		reshape = [0]*nb_channels
+		reshape2 = [0]*nb_channels
 		conv = [0]*nb_channels
 		deconv = [0]*nb_channels
 		deconv_model = [0]*nb_channels
@@ -76,12 +77,12 @@ class CNNModel:
 			print("reshape", i,  reshape[i].shape)
 
 			# CONVOLUTION
-			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
-			conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
-			print("conv", i,  conv[i].shape)
+			conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
+			#conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
+			#print("conv", i,  conv[i].shape)
 
 			# MAXPOOLING
-			#pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
+			pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
 			#pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(deconv[i])
 			#print("pool", i,  pool[i].shape)
 
@@ -93,11 +94,14 @@ class CNNModel:
 			#deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
 			#deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
 
-			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
-			print("deconv", i,  deconv[i].shape)
+			#deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
+			#print("deconv", i,  deconv[i].shape)
+
+			#reshape2[i] = Reshape((config["SEQUENCE_SIZE"], 1, config["EMBEDDING_DIM"]))(deconv[i])
+			#print("reshape", i,  reshape[i].shape)
 
 			# MAXPOOLING
-			#pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"], 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(deconv[i])
+			#pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"], 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(reshape2[i])
 			#print("pool", i,  pool[i].shape)
 
 			# FLATTEN
@@ -105,9 +109,10 @@ class CNNModel:
 			#print("flat", i,  flat[i].shape)
 
 			# SUM = SENT REPRESENTATION
-			conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
-			print("Lambda :", i, conv_representation[i].shape)
+			#conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
+			#print("Lambda :", i, conv_representation[i].shape)
 
+			"""
 			# ----------
 			# LSTM LAYER
 			# ----------
@@ -143,18 +148,18 @@ class CNNModel:
 			
 			#sent_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(sent_representation[i])
 			#print("Lambda :", sent_representation[i].shape)
-
+			"""
 			print("-"*20)
 		
 		# ----------------------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
 		# ----------------------------------------------------
 		if config["TG"]:
-			merged = concatenate([sent_representation[0], sent_representation[1], sent_representation[2]])
+			merged = concatenate([pool[0], pool[1], pool[2]])
 			#merged = multiply([conv[0], conv[1], conv[2]])
 			print("merged", merged.shape)
 		else:
-			merged = sent_representation[0]
+			merged = pool[0]
 
 		# ----------
 		# LSTM LAYER

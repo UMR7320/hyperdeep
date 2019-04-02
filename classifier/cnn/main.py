@@ -190,7 +190,7 @@ def predict(text_file, model_file, config, vectors_file):
 	last_attention_layer = 0
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Conv2DTranspose:
+		if type(layer) is Conv1D:
 			last_conv_layer = i+1
 		elif type(layer) is Activation:
 			last_attention_layer = i+1
@@ -203,10 +203,13 @@ def predict(text_file, model_file, config, vectors_file):
 	tds = deconv_model.predict(x_data)
 
 	# ATTENTION
-	layer_outputs2 = [layer.output for layer in classifier.layers[:last_attention_layer]] 
-	attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
-	attention_model.summary()
-	attention = attention_model.predict(x_data)
+	if config["ENABLE_LSTM"]:
+		layer_outputs2 = [layer.output for layer in classifier.layers[:last_attention_layer]] 
+		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
+		attention_model.summary()
+		attention = attention_model.predict(x_data)
+	else:
+		attention_model = False
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
@@ -222,17 +225,17 @@ def predict(text_file, model_file, config, vectors_file):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
 
-				"""
-				if i == 0 or i == config["SEQUENCE_SIZE"]:
-					word += "*1"
+				if i == 0 or i == config["SEQUENCE_SIZE"]-1:
+					tds_value = 0
 				else:
-					attention = sum(deconv[-(channel+1)][sentence_nb][i-2])*1000
-				"""
-				tds_value = sum(sum(tds[-(channel+1)][sentence_nb][i]))**4		# TDS
-				attention_value += ((attention[-(channel+1)][sentence_nb][i]*100)**4)*1000 	# ATTENTION
+					tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])**4		# TDS
+
+				#tds_value = sum(tds[-(channel+1)][sentence_nb][i])**4		# TDS
+				if attention_model:
+					attention_value += ((attention[-(channel+1)][sentence_nb][i]*100)**4)*1000 	# ATTENTION
 				word += "*" + str(tds_value)
 				word += "**"
-			print(attention_value)
+
 			word = word[:-1] + str(attention_value) # attention...
 			sentence["sentence"] += word + " "
 		result.append(sentence)
