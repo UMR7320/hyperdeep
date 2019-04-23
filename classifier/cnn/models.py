@@ -46,7 +46,6 @@ class CNNModel:
 		deconv_model = [0]*nb_channels
 		conv_representation = [0]*nb_channels
 		pool = [0]*nb_channels
-		flat = [0]*nb_channels
 
 		#lstm = [0]*nb_channels
 		#attention = [0]*nb_channels
@@ -74,28 +73,32 @@ class CNNModel:
 			print("embedding", i,  embedding[i].shape)
 
 			# CONVOLUTION 1D
-			conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
-			pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
+			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
+			#pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
 
 			# CONVOLUTION 2D
-			#conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
-			#pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(deconv[i])
-			#print("pool", i,  pool[i].shape)
+			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
+			conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
 
-			print("conv", i,  conv[i].shape)
-			print("pool", i,  pool[i].shape)			
+			# DECONVOLUTION 2D
+			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
+			deconv_model[i] = Model(inputs=inputs[i], outputs=deconv[i])
+			print("deconv", i,  deconv[i].shape)
+			
+			# WITH RNN
+			if config["ENABLE_LSTM"]:
+				conv_shape = conv[i].shape[1:]
+				pool[i] = Reshape((int(conv_shape[0]),int(np.prod(conv_shape[1:]))))(conv[i])
 
-			# RESHAPE
-			#reshape[i] = Reshape((config["SEQUENCE_SIZE"], 1, config["EMBEDDING_DIM"]))(embedding[i])
-			#print("reshape", i,  reshape[i].shape)
+			# WITHOUT RNN
+			else:
+				pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
+
+			print("conv", i,  pool[i].shape)
 
 			# DECONVOLUTION 1D
 			#deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
 			#deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
-			
-			# DECONVOLUTION 2D
-			#deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
-			#print("deconv", i,  deconv[i].shape)
 
 			# FLATTEN
 			#flat[i] = Flatten()(pool[i])
@@ -144,68 +147,62 @@ class CNNModel:
 			"""
 			print("-"*20)
 		
-		# ----------------------------------------------------		
-		# APPLY THE MULTI CHANNELS ABSTRACTION (DECONVOLUTION)
-		# ----------------------------------------------------
-		if config["ENABLE_CONV"] and not config["ENABLE_LSTM"] : 	# CNN
+		# ------------------------------------		
+		# APPLY THE MULTI CHANNELS ABSTRACTION
+		# ------------------------------------
+		if config["ENABLE_CONV"]:
 			if config["TG"]:
 				merged = concatenate(pool)
 			else:
 				merged = pool[0]
-		elif not config["ENABLE_CONV"] and config["ENABLE_LSTM"]: 	# RNN
+		else:
 			if config["TG"]:
 				merged = concatenate(embedding)
 			else:
 				merged = embedding[0]
-		elif config["ENABLE_LSTM"] and config["ENABLE_CONV"]:		# CNN + RNN
-			if config["TG"]:
-				merged = concatenate(conv)
-			else:
-				merged = conv[0]
 		merged = BatchNormalization()(merged)
 		print("merged", merged.shape)
 
-		# ----------
-		# LSTM LAYER
-		# ----------
-		rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged)
-		print("rnn :", rnn.shape)
-
-		# ---------------
-		# ATTENTION LAYER
-		# ---------------
-		attention = TimeDistributed(Dense(1, activation='tanh'))(rnn) 
-		print("TimeDistributed :", attention.shape)
-
-		# reshape Attention
-		attention = Flatten()(attention)
-		print("Flatten :", attention.shape)
-		
-		attention = Activation('softmax')(attention)
-		print("Activation :", attention.shape)
-
-		# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
-		# attention = RepeatVector(config["LSTM_SIZE"])(attention) # NORMAL RNN
-		attention = RepeatVector(config["LSTM_SIZE"]*2)(attention) # BIDIRECTIONAL RNN
-		print("RepeatVector :", attention.shape)
-		
-		attention = Permute([2, 1])(attention)
-		print("Permute :", attention.shape)
-
-		# apply the attention		
-		sent_representation = multiply([rnn, attention])
-		print("Multiply :", sent_representation.shape)
-		
-
-		# -------------
-		# DROPOUT LAYER
-		# -------------
 		if config["ENABLE_LSTM"]:
-			dropout = Flatten()(sent_representation)
-		else:
-			dropout = Flatten()(merged)
+			# ----------
+			# LSTM LAYER
+			# ----------
+			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged)
+			print("rnn :", rnn.shape)
+
+			# ---------------
+			# ATTENTION LAYER
+			# ---------------
+			attention = TimeDistributed(Dense(1, activation='tanh'))(rnn) 
+			print("TimeDistributed :", attention.shape)
+
+			# reshape Attention
+			attention = Flatten()(attention)
+			print("Flatten :", attention.shape)
 			
-		dropout = Dropout(config["DROPOUT_VAL"])(dropout)
+			attention = Activation('softmax')(attention)
+			print("Activation :", attention.shape)
+
+			# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
+			# attention = RepeatVector(config["LSTM_SIZE"])(attention) # NORMAL RNN
+			attention = RepeatVector(config["LSTM_SIZE"]*2)(attention) # BIDIRECTIONAL RNN
+			print("RepeatVector :", attention.shape)
+			
+			attention = Permute([2, 1])(attention)
+			print("Permute :", attention.shape)
+
+			# apply the attention		
+			sent_representation = multiply([rnn, attention])
+			print("Multiply :", sent_representation.shape)
+		
+			# -------------
+			# DROPOUT LAYER
+			# -------------
+			flat = Flatten()(sent_representation)
+		else:
+			flat = Flatten()(merged)
+			
+		dropout = Dropout(config["DROPOUT_VAL"])(flat)
 		print("Dropout :", dropout.shape)
 
 		# -----------------
@@ -236,4 +233,4 @@ class CNNModel:
 		print("TRAINING MODEL")
 		print(model.summary())
 
-		return model
+		return model, deconv_model

@@ -144,13 +144,24 @@ def train(corpus_file, model_file, config):
 
 	# create and get model
 	cnn_model = models.CNNModel()
-	model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
+	model, deconv_model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
 
 	# train model
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 	callbacks_list = [checkpoint]
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
+
+	# SETUP THE DECONV LAYER WEIGHTS
+	for i, deconv in enumerate(deconv_model):
+		for layer in deconv.layers:	
+			if type(layer) is Conv2D:
+				deconv_weights = layer.get_weights()[0]
+		deconv_bias = deconv.layers[-1].get_weights()[1]
+		deconv.layers[-1].set_weights([deconv_weights, deconv_bias])
+
+		# save deconv model
+		deconv.save(model_file + ".deconv" + str(i))
 
 	# get score
 	model = load_model(model_file)
@@ -198,10 +209,18 @@ def predict(text_file, model_file, config, vectors_file):
 	
 	# TDS
 	if config["ENABLE_CONV"]:
-		layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
-		deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-		deconv_model.summary()
-		tds = deconv_model.predict(x_data)
+
+		# DECONV BY READING FILTERS
+		#layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
+		#deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+		#deconv_model.summary()
+		#tds = deconv_model.predict(x_data)
+
+		# DECONV BY CONV2DTRANSPOSE
+		tds = []
+		for channel in range(len(x_data)):
+			deconv_model = load_model(model_file + ".deconv" + str(channel))
+			tds += [deconv_model.predict(x_data[channel])]
 	else:
 		tds = False
 
@@ -226,10 +245,20 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word += dictionaries[channel]["index_word"].get(index, "PAD")
-				if not tds or i == 0 or i == config["SEQUENCE_SIZE"]-1:
+				
+				# DECONV BY READING FILTERS
+				#if not tds or i == 0 or i == config["SEQUENCE_SIZE"]-1:
+				#	tds_value = 0
+				#else:
+				#	tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
+				
+				# DECONV BY CONV2DTRANSPOSE
+				if not tds:
 					tds_value = 0
 				else:
-					tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
+					print(tds[channel][sentence_nb].shape)
+					tds_value = sum(tds[channel][sentence_nb][i])[0]
+
 				word += "*" + str(tds_value)
 				word += "**"
 
