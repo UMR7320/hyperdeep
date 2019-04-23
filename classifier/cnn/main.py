@@ -240,7 +240,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 			word = word[:-1] + str(attention_value) # attention...
 			sentence["sentence"] += word + " "
-		print("-"*20)
+		#print("-"*20)
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------

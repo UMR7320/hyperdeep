@@ -20,6 +20,7 @@ from keras.layers import Lambda
 from keras.layers import concatenate
 from keras.utils import np_utils
 from keras.layers import multiply
+from keras.layers import BatchNormalization
 
 class CNNModel:
 	
@@ -72,23 +73,27 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
-			# CONVOLUTION
+			# CONVOLUTION 1D
 			conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
-			#conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
-			print("conv", i,  conv[i].shape)
-
-			# MAXPOOLING
 			pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
+
+			# CONVOLUTION 2D
+			#conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
 			#pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(deconv[i])
 			#print("pool", i,  pool[i].shape)
+
+			print("conv", i,  conv[i].shape)
+			print("pool", i,  pool[i].shape)			
 
 			# RESHAPE
 			#reshape[i] = Reshape((config["SEQUENCE_SIZE"], 1, config["EMBEDDING_DIM"]))(embedding[i])
 			#print("reshape", i,  reshape[i].shape)
 
-			# DECONVOLUTION
+			# DECONVOLUTION 1D
 			#deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
 			#deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
+			
+			# DECONVOLUTION 2D
 			#deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
 			#print("deconv", i,  deconv[i].shape)
 
@@ -157,6 +162,7 @@ class CNNModel:
 				merged = concatenate(conv)
 			else:
 				merged = conv[0]
+		merged = BatchNormalization()(merged)
 		print("merged", merged.shape)
 
 		# ----------
