@@ -160,10 +160,15 @@ class CNNModel:
 				merged = concatenate(embedding)
 			else:
 				merged = embedding[0]
-		merged = BatchNormalization()(merged)
 		print("merged", merged.shape)
 
 		if config["ENABLE_LSTM"]:
+
+			# --------------------------------
+			# Normalization (forme/code/lemme)
+			# --------------------------------			
+			merged = BatchNormalization()(merged)
+
 			# ----------
 			# LSTM LAYER
 			# ----------

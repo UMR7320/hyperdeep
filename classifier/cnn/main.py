@@ -236,16 +236,22 @@ def predict(text_file, model_file, config, vectors_file):
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
 		sentence = {}
-		sentence["sentence"] = ""
+		sentence["sentence"] = []
 		sentence["prediction"] = predictions[sentence_nb].tolist()
 
 		# READ SENTENCE WORD BY WORD
 		for i in range(config["SEQUENCE_SIZE"]):
-			word = ""
+
+			# GET ATTENTION VALUE (RNN NETWORK)
+			if not attention or i == 0 or i == config["SEQUENCE_SIZE"]-1:
+				attention_value = 0
+			else:
+				attention_value = (attention[-1][sentence_nb][i-1])				# ATTENTION
+			
+			# GET TDS VALUES
+			word = {}
 			for channel in range(len(x_data)):
-				index = x_data[channel][sentence_nb][i]
-				word += dictionaries[channel]["index_word"].get(index, "PAD")
-				
+
 				# DECONV BY READING FILTERS
 				#if not tds or i == 0 or i == config["SEQUENCE_SIZE"]-1:
 				#	tds_value = 0
@@ -256,19 +262,17 @@ def predict(text_file, model_file, config, vectors_file):
 				if not tds:
 					tds_value = 0
 				else:
-					print(tds[channel][sentence_nb].shape)
 					tds_value = sum(tds[channel][sentence_nb][i])[0]
 
-				word += "*" + str(tds_value)
-				word += "**"
+				# FILL THE WORD VALUES
+				channel_name = "channel" + str(channel)
+				word[channel_name] = {}
+				index = x_data[channel][sentence_nb][i]
+				word[channel_name]["str"] = dictionaries[channel]["index_word"].get(index, "PAD")
+				word[channel_name]["tds"] = str(tds_value)
+				word[channel_name]["attention"] = str(attention_value)
+			sentence["sentence"] += [word]
 
-			if not attention or i == 0 or i == config["SEQUENCE_SIZE"]-1:
-				attention_value = 0
-			else:
-				attention_value = (attention[-1][sentence_nb][i-1])				# ATTENTION
-
-			word = word[:-1] + str(attention_value) # attention...
-			sentence["sentence"] += word + " "
 		#print("-"*20)
 		result.append(sentence)
 
