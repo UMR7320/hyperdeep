@@ -167,7 +167,7 @@ class CNNModel:
 			# --------------------------------
 			# Normalization (forme/code/lemme)
 			# --------------------------------			
-			merged = BatchNormalization()(merged)
+			#merged = BatchNormalization()(merged)
 
 			# ----------
 			# LSTM LAYER

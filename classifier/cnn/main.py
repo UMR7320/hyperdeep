@@ -163,6 +163,30 @@ def train(corpus_file, model_file, config):
 		# save deconv model
 		deconv.save(model_file + ".deconv" + str(i))
 
+	# GET EMBEDDING
+	for channel in range(len(x_train)):
+		layer_outputs = [layer.output for layer in model.layers[:channel+4]] 
+		embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
+		embedding_model.summary()
+
+		x_embedding = preprocessing.dictionaries[channel]["word_index"][:50]
+		print(dictionay_entries)
+
+	#tds = deconv_model.predict(x_data)
+	"""
+	f = open(model_file + "." + str(i) + ".vec"  ,'w')
+    vectors = []
+    vector = '{} {}\n'.format(len(model.wv.index2word), config["EMBEDDING_DIM"])
+    vectors.append(vector)
+    f.write(vector)    
+    for word in model.wv.index2word:
+        vector = word + " " + " ".join(str(x) for x in model.wv[word]) + "\n"
+        vectors.append(vector)
+        f.write(vector)
+    f.flush()
+    f.close()
+    """
+
 	# get score
 	model = load_model(model_file)
 	scores = model.evaluate(x_val, y_val, verbose=0)
@@ -243,10 +267,10 @@ def predict(text_file, model_file, config, vectors_file):
 		for i in range(config["SEQUENCE_SIZE"]):
 
 			# GET ATTENTION VALUE (RNN NETWORK)
-			if not attention or i == 0 or i == config["SEQUENCE_SIZE"]-1:
+			if not attention or i >= config["SEQUENCE_SIZE"]-2:
 				attention_value = 0
 			else:
-				attention_value = (attention[-1][sentence_nb][i-1])				# ATTENTION
+				attention_value = (attention[-1][sentence_nb][i])				# ATTENTION
 			
 			# GET TDS VALUES
 			word = {}
