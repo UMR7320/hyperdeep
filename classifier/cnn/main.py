@@ -169,8 +169,8 @@ def train(corpus_file, model_file, config):
 		embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
 		embedding_model.summary()
 
-		x_embedding = preprocessing.dictionaries[channel]["word_index"][:50]
-		print(dictionay_entries)
+		#x_embedding = preprocessing.dictionaries[channel]["word_index"][:50]
+		#print(dictionay_entries)
 
 	#tds = deconv_model.predict(x_data)
 	"""
