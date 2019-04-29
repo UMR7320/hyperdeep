@@ -267,10 +267,15 @@ def predict(text_file, model_file, config, vectors_file):
 		for i in range(config["SEQUENCE_SIZE"]):
 
 			# GET ATTENTION VALUE (RNN NETWORK)
+			"""
 			if not attention or i >= config["SEQUENCE_SIZE"]-2:
 				attention_value = 0
 			else:
+			"""
+			try:
 				attention_value = (attention[-1][sentence_nb][i])				# ATTENTION
+			except:
+				attention_value = 0
 			
 			# GET TDS VALUES
 			word = {}
