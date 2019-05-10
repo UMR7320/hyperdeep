@@ -20,7 +20,7 @@ def create_vectors(corpus_file, model_file, config, nb_channels):
         # sg defines the training algorithm. By default (sg=0), CBOW is used. Otherwise (sg=1), skip-gram is employed.
         model = gensim.models.Word2Vec(sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, sg=config["SG"])
 
-        f = open(model_file + "." + str(i) + ".vec"  ,'w')
+        f = open(model_file + ".vec" + str(i)  ,'w')
         vectors = []
         vector = '{} {}\n'.format(len(model.wv.index2word), config["EMBEDDING_DIM"])
         vectors.append(vector)

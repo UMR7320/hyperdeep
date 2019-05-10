@@ -97,18 +97,19 @@ class PreProcessing:
 			self.x_val += [data[-nb_validation_samples:]]
 
 		self.dictionaries = dictionaries
+		self.nb_channels = len(texts.keys())
 
 	def loadEmbeddings(self, model_file, config, create_v = False):
 		
 		self.embedding_matrix = []
 
 		if not create_v:
-			create_vectors(self.corpus_file, model_file, config, nb_channels=len(self.dictionaries))
+			create_vectors(self.corpus_file, model_file, config, nb_channels=self.nb_channels)
 
 		for i, dictionary in enumerate(self.dictionaries):
 			my_dictionary = dictionary["word_index"]
 			embeddings_index = {}
-			vectors = open(model_file + "." + str(i) + ".vec"  ,'r')
+			vectors = open(model_file + ".vec" + str(i) ,'r')
 				
 			for line in vectors.readlines():
 				values = line.split()
