@@ -278,7 +278,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# ATTENTION
 	if config["ENABLE_LSTM"]:
-		layer_outputs2 = [layer.output for layer in classifier.layers[len(x_data[channel]):last_attention_layer]] 
+		layer_outputs2 = [layer.output for layer in classifier.layers[len(x_data):last_attention_layer]] 
 		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
 		attention_model.summary()
 		attention = attention_model.predict(x_data)
@@ -301,7 +301,7 @@ def predict(text_file, model_file, config, vectors_file):
 			else:
 			"""
 			try:
-				attention_value = (attention[sentence_nb][i])						# ATTENTION
+				attention_value = attention[-1][sentence_nb][i]						# ATTENTION
 			except:
 				attention_value = 0
 			
