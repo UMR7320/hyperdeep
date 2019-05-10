@@ -21,6 +21,7 @@ from keras.layers import concatenate
 from keras.utils import np_utils
 from keras.layers import multiply
 from keras.layers import BatchNormalization
+from keras.utils import multi_gpu_model
 
 class CNNModel:
 	
@@ -228,6 +229,8 @@ class CNNModel:
 		# COMPILE THE MODEL
 		# -----------------
 		model = Model(inputs=inputs, outputs=output)
+		# For multi-gpu
+		#model = multi_gpu_model(model, gpus=2)
 		op = optimizers.Adam(lr=config["LEARNING_RATE"], beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 		model.compile(optimizer=op, loss=crossentropy, metrics=['accuracy'])
 

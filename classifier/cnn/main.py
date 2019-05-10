@@ -163,29 +163,48 @@ def train(corpus_file, model_file, config):
 		# save deconv model
 		deconv.save(model_file + ".deconv" + str(i))
 
-	# GET EMBEDDING
-	for channel in range(len(x_train)):
-		layer_outputs = [layer.output for layer in model.layers[:channel+4]] 
-		embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
-		embedding_model.summary()
+	# GET EMBEDDING MODEL
+	layer_outputs = [layer.output for layer in model.layers[:len(x_train)*2]] 
+	embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
+	embedding_model.summary()
+	
+	# GET WORD EMBEDDINGS
+	x_data = []
+	for channel in range(len(preprocessing.x_train)):
+		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
+	embedding = embedding_model.predict(x_data)
+	
+	# get dictionnaries
+	dictionaries = preprocessing.dictionaries
+	
+	# init embeddings
+	embeddings = {}
+	for channel in range(len(x_data)):
+		embeddings[channel] = {}
 
-		#x_embedding = preprocessing.dictionaries[channel]["word_index"][:50]
-		#print(dictionay_entries)
+	# READ ALL SENTENCES (TODO: optimize this!)
+	for sentence_nb in range(len(x_data[channel])):
+		# READ SENTENCE WORD BY WORD
+		for i in range(config["SEQUENCE_SIZE"]):
+			# READ EACH CHANNEL
+			for channel in range(len(x_data)):
+				index = x_data[channel][sentence_nb][i]
+				word = dictionaries[channel]["index_word"].get(index, "PAD")
+				wordvector = embedding[-channel+1][sentence_nb][i]
+				embeddings[channel][word] = wordvector
 
-	#tds = deconv_model.predict(x_data)
-	"""
-	f = open(model_file + "." + str(i) + ".vec"  ,'w')
-    vectors = []
-    vector = '{} {}\n'.format(len(model.wv.index2word), config["EMBEDDING_DIM"])
-    vectors.append(vector)
-    f.write(vector)    
-    for word in model.wv.index2word:
-        vector = word + " " + " ".join(str(x) for x in model.wv[word]) + "\n"
-        vectors.append(vector)
-        f.write(vector)
-    f.flush()
-    f.close()
-    """
+	for channel in range(len(x_data)):
+		f = open(model_file + ".vec" + str(channel) ,'w')
+		vectors = []
+		vector = '{} {}\n'.format(len(embeddings[channel].keys()), config["EMBEDDING_DIM"])
+		vectors.append(vector)
+		f.write(vector)    
+		for word, values in embeddings[channel].items():
+			vector = word + " " + " ".join([str(f) for f in values]) + "\n"
+			vectors.append(vector)
+			f.write(vector)
+		f.flush()
+		f.close()
 
 	# get score
 	model = load_model(model_file)
@@ -210,10 +229,11 @@ def predict(text_file, model_file, config, vectors_file):
 	print("PREDICTION")
 	print("----------------------------")
 	classifier = load_model(model_file)
+	
 	x_data = []
-
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
+	
 	predictions = classifier.predict(x_data)
 
 	print("----------------------------")

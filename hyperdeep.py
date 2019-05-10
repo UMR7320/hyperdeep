@@ -11,6 +11,9 @@ import json
 from classifier.cnn.main import train, predict
 from skipgram.skipgram_with_NS import create_vectors, get_most_similar
 
+# DISABLE GPU
+#os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
 def print_help():
     print("usage: python hyperdeep.py <command> <args>\n")
     print("The commands supported by deeperbase are:\n")
