@@ -164,7 +164,7 @@ def train(corpus_file, model_file, config):
 		deconv.save(model_file + ".deconv" + str(i))
 
 	# GET EMBEDDING MODEL
-	layer_outputs = [layer.output for layer in model.layers[:len(x_train)*2]] 
+	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
 	embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
 	embedding_model.summary()
 	
@@ -190,7 +190,15 @@ def train(corpus_file, model_file, config):
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
 				word = dictionaries[channel]["index_word"].get(index, "PAD")
-				wordvector = embedding[-channel+1][sentence_nb][i]
+
+				# MUTLI CHANNEL
+				if len(preprocessing.x_train) == len(embedding):
+					wordvector = embedding[channel][sentence_nb][i]
+
+				# ONE CHANNEL
+				else:
+					wordvector = embedding[sentence_nb][i]
+				
 				embeddings[channel][word] = wordvector
 
 	for channel in range(len(x_data)):
@@ -270,7 +278,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# ATTENTION
 	if config["ENABLE_LSTM"]:
-		layer_outputs2 = [layer.output for layer in classifier.layers[:last_attention_layer]] 
+		layer_outputs2 = [layer.output for layer in classifier.layers[len(x_data[channel]):last_attention_layer]] 
 		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
 		attention_model.summary()
 		attention = attention_model.predict(x_data)
@@ -293,7 +301,7 @@ def predict(text_file, model_file, config, vectors_file):
 			else:
 			"""
 			try:
-				attention_value = (attention[-1][sentence_nb][i])				# ATTENTION
+				attention_value = (attention[sentence_nb][i])						# ATTENTION
 			except:
 				attention_value = 0
 			
