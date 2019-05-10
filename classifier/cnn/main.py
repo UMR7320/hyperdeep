@@ -106,7 +106,7 @@ class PreProcessing:
 		if not create_v:
 			create_vectors(self.corpus_file, model_file, config, nb_channels=self.nb_channels)
 
-		for i in range(len(self.nb_channels)):
+		for i in range(self.nb_channels):
 			my_dictionary = self.dictionaries[i]["word_index"]
 			embeddings_index = {}
 			vectors = open(model_file + ".vec" + str(i) ,'r')
