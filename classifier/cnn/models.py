@@ -23,7 +23,13 @@ from keras.layers import multiply
 from keras.layers import BatchNormalization
 from keras.utils import multi_gpu_model
 
+from tensorflow.python.client import device_lib
+
 class CNNModel:
+
+	def get_available_gpus(self):
+	    local_device_protos = device_lib.list_local_devices()
+	    return [x.name for x in local_device_protos if x.device_type == 'GPU']
 	
 	def getModel(self, config, weight=None):
 
@@ -230,7 +236,8 @@ class CNNModel:
 		# -----------------
 		model = Model(inputs=inputs, outputs=output)
 		# For multi-gpu
-		#model = multi_gpu_model(model, gpus=2)
+		if len(self.get_available_gpus()) >= 2:
+			model = multi_gpu_model(model, gpus=2)
 		op = optimizers.Adam(lr=config["LEARNING_RATE"], beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 		model.compile(optimizer=op, loss=crossentropy, metrics=['accuracy'])
 
