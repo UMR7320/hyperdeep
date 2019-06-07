@@ -217,9 +217,9 @@ class CNNModel:
 		dropout = Dropout(config["DROPOUT_VAL"])(flat)
 		print("Dropout :", dropout.shape)
 
-		# -----------------
+		# ------------------
 		# HIDDEN DENSE LAYER
-		# -----------------		
+		# ------------------	
 		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform',activation='relu')(dropout)
 
 		# -----------------

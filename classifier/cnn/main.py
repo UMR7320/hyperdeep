@@ -288,6 +288,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	for sentence_nb in range(len(x_data[channel])):
+		print(sentence_nb + "/" + len(x_data[channel]))
 		sentence = {}
 		sentence["sentence"] = []
 		sentence["prediction"] = predictions[sentence_nb].tolist()
