@@ -15,6 +15,8 @@ from data_helpers import tokenize
 import scipy.misc as smp
 import imageio
 
+from lime.lime_text import LimeTextExplainer
+
 class PreProcessing:
 
 	def loadData(self, corpus_file, model_file, config, create_dictionnary):   
@@ -126,6 +128,25 @@ class PreProcessing:
 					self.embedding_matrix[i][j] = embedding_vector
 			vectors.close()
 
+	# ------------------------------
+	# LIME
+	def set_model(self, model):
+		self.model = model
+
+	import random
+	def classifier_fn(self, text):
+		X = []
+		for t in text:
+			entry = []
+			for i, word in enumerate(t.split(" ")):
+				entry += [self.dictionaries[0]["word_index"].get(word, 0)]
+			X += [entry]
+		
+		P = self.model.predict(X)
+		print(P)
+		return P
+	# ------------------------------
+
 def train(corpus_file, model_file, config):
 
 	# preprocess data
@@ -151,6 +172,7 @@ def train(corpus_file, model_file, config):
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 	callbacks_list = [checkpoint]
+	
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# SETUP THE DECONV LAYER WEIGHTS
@@ -164,6 +186,7 @@ def train(corpus_file, model_file, config):
 		# save deconv model
 		deconv.save(model_file + ".deconv" + str(i))
 
+	# ------------------------------------
 	# GET EMBEDDING MODEL
 	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
 	embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
@@ -214,6 +237,7 @@ def train(corpus_file, model_file, config):
 			f.write(vector)
 		f.flush()
 		f.close()
+	# ------------------------------------
 
 	# get score
 	model = load_model(model_file)
@@ -244,6 +268,20 @@ def predict(text_file, model_file, config, vectors_file):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
 	
 	predictions = classifier.predict(x_data)
+
+	# LIME
+	preprocessing.set_model(classifier)
+	explainer = LimeTextExplainer(split_expression=" ")
+	lime_text = ""
+	for data in x_data[0]:
+		for idx in data:
+			lime_text += dictionaries[0]["index_word"][idx] + " "
+		break # exaplain first line
+	lime_text = lime_text[:-1]
+	print(lime_text)
+	exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, top_labels=5)
+	print(exp.available_labels())
+	print ('\n'.join(map(str, exp.as_list(label=3))))
 
 	print("----------------------------")
 	print("DECONVOLUTION")
