@@ -176,6 +176,7 @@ def train(corpus_file, model_file, config):
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# SETUP THE DECONV LAYER WEIGHTS
+	"""
 	for i, deconv in enumerate(deconv_model):
 		for layer in deconv.layers:	
 			if type(layer) is Conv2D:
@@ -185,6 +186,7 @@ def train(corpus_file, model_file, config):
 
 		# save deconv model
 		deconv.save(model_file + ".deconv" + str(i))
+	"""
 
 	# ------------------------------------
 	# GET EMBEDDING MODEL
@@ -270,18 +272,21 @@ def predict(text_file, model_file, config, vectors_file):
 	predictions = classifier.predict(x_data)
 
 	# LIME
-	preprocessing.set_model(classifier)
-	explainer = LimeTextExplainer(split_expression=" ")
-	lime_text = ""
-	for data in x_data[0]:
-		for idx in data:
-			lime_text += dictionaries[0]["index_word"][idx] + " "
-		break # exaplain first line
-	lime_text = lime_text[:-1]
-	print(lime_text)
-	exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, top_labels=5)
-	print(exp.available_labels())
-	print ('\n'.join(map(str, exp.as_list(label=3))))
+	if config["ENABLE_LIME"]:
+		lime = []
+		preprocessing.set_model(classifier)
+		explainer = LimeTextExplainer(split_expression=" ")
+		for i, data in enumerate(x_data[0]): # Channel 0
+			lime_text = ""
+			for idx in data:
+				lime_text += dictionaries[0]["index_word"][idx] + " "
+			lime_text = lime_text[:-1]
+			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
+			predicted_label = list(predictions[i]).index(max(predictions[i]))
+			#print(predictions[i], predicted_label)
+			lime += [exp.as_list(label=predicted_label)]
+			#print(exp.available_labels())
+			#print ('\n'.join(map(str, exp.as_list(label=4))))
 
 	print("----------------------------")
 	print("DECONVOLUTION")
@@ -354,6 +359,7 @@ def predict(text_file, model_file, config, vectors_file):
 				#	tds_value = 0
 				#else:
 				#	tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
+				#tds_value = sum(tds[-(channel+1)][sentence_nb][i])
 				
 				# DECONV BY CONV2DTRANSPOSE
 				if not tds:
@@ -371,6 +377,11 @@ def predict(text_file, model_file, config, vectors_file):
 			sentence["sentence"] += [word]
 
 		#print("-"*20)
+		if config["ENABLE_LIME"]:
+			lime_dic = {}
+			for w, v in lime[sentence_nb]:
+				lime_dic[w] = v
+			sentence["lime"] = lime_dic
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------
@@ -378,7 +389,7 @@ def predict(text_file, model_file, config, vectors_file):
 		deconv_image = np.zeros( (config["SEQUENCE_SIZE"]*len(x_data), config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
 		for channel in range(len(x_data)):
 			for y in range(config["SEQUENCE_SIZE"]):
-				deconv_value = deconv[channel][sentence_nb][y]
+				deconv_value 	= deconv[channel][sentence_nb][y]
 				for x in range(int(config["EMBEDDING_DIM"])):
 					dv = deconv_value[x]
 					dv = dv*200

@@ -124,6 +124,10 @@ if __name__ == '__main__':
             vectors_file = args[3]
             text_file = args[4]
             config = json.loads(open(model_file + ".config", "r").read())
+            if "-lime" in args.keys():
+                config["ENABLE_LIME"] = args["-lime"]
+            else:
+                config["ENABLE_LIME"] = False
             predictions = predict(text_file, model_file, config, vectors_file)
 
             # save predictions in a file

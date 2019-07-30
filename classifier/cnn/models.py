@@ -80,8 +80,7 @@ class CNNModel:
 			print("embedding", i,  embedding[i].shape)
 
 			# CONVOLUTION 1D
-			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(embedding[i])
-			#pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='valid')(conv[i])
+			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='same', kernel_initializer='normal', activation='relu')(embedding[i])
 
 			# CONVOLUTION 2D
 			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
@@ -99,6 +98,7 @@ class CNNModel:
 
 			# WITHOUT RNN
 			else:
+				#pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='same')(conv[i])
 				pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
 
 			print("conv", i,  pool[i].shape)
