@@ -176,7 +176,6 @@ def train(corpus_file, model_file, config):
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# SETUP THE DECONV LAYER WEIGHTS
-	"""
 	for i, deconv in enumerate(deconv_model):
 		for layer in deconv.layers:	
 			if type(layer) is Conv2D:
@@ -186,7 +185,6 @@ def train(corpus_file, model_file, config):
 
 		# save deconv model
 		deconv.save(model_file + ".deconv" + str(i))
-	"""
 
 	# ------------------------------------
 	# GET EMBEDDING MODEL
