@@ -141,7 +141,7 @@ class PreProcessing:
 			for i, word in enumerate(t.split(" ")):
 				entry += [self.dictionaries[0]["word_index"].get(word, 0)]
 			X += [entry]
-		
+		X = np.asarray(X)
 		P = self.model.predict(X)
 		print(P)
 		return P
