@@ -84,9 +84,12 @@ class PreProcessing:
 		# Size of validation sample
 		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
 
-		# split the data into a training set and a validation set
+		# SHUFFLE
 		indices = np.arange(datas[0].shape[0])
-		np.random.shuffle(indices)
+		if create_dictionnary: # ONLY FOR TRAINING
+			np.random.shuffle(indices)
+
+		# split the data into a training set and a validation set		
 		labels = labels[indices]
 		self.y_train = labels[:-nb_validation_samples]
 		self.y_val = labels[-nb_validation_samples:]
@@ -268,6 +271,7 @@ def predict(text_file, model_file, config, vectors_file):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
 	
 	predictions = classifier.predict(x_data)
+	print(predictions)
 
 	# LIME
 	if config["ENABLE_LIME"]:
@@ -282,7 +286,7 @@ def predict(text_file, model_file, config, vectors_file):
 			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
 			predicted_label = list(predictions[i]).index(max(predictions[i]))
 			#print(predictions[i], predicted_label)
-			lime += [exp.as_list(label=predicted_label)]
+			lime += [dict(exp.as_list(label=predicted_label))]
 			#print(exp.available_labels())
 			#print ('\n'.join(map(str, exp.as_list(label=4))))
 
@@ -372,14 +376,11 @@ def predict(text_file, model_file, config, vectors_file):
 				word[channel_name]["str"] = dictionaries[channel]["index_word"].get(index, "PAD")
 				word[channel_name]["tds"] = str(tds_value)
 				word[channel_name]["attention"] = str(attention_value)
+				if config["ENABLE_LIME"]:
+					word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
+			
 			sentence["sentence"] += [word]
-
-		#print("-"*20)
-		if config["ENABLE_LIME"]:
-			lime_dic = {}
-			for w, v in lime[sentence_nb]:
-				lime_dic[w] = v
-			sentence["lime"] = lime_dic
+		
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------
