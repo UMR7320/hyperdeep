@@ -5,13 +5,15 @@ def tokenize(texts, model_file, create_dictionnary, config):
 
 	if create_dictionnary:
 		dictionaries = []
-		indexes = [0,0,0]
+		indexes = [1,1,1]
 		for i in range(3):
 			dictionary = {}
 			dictionary["word_index"] = {}
 			dictionary["index_word"] = {}
 			dictionary["word_index"]["PAD"] = 0
 			dictionary["index_word"][0] = "PAD"
+			dictionary["word_index"]["UK"] = 1
+			dictionary["index_word"][1] = "UK"
 			dictionaries += [dictionary]
 	else:
 		with open(model_file + ".index", 'rb') as handle:
@@ -35,7 +37,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 
 					else:        
 						# FOR UNKNOWN WORDS
-						dictionaries[i]["word_index"][word] = dictionaries[i]["word_index"]["PAD"]
+						dictionaries[i]["word_index"][word] = dictionaries[i]["word_index"]["UK"]
 				sentence.append(dictionaries[i]["word_index"][word])
 
 			# COMPLETE WITH PAD IF LENGTH IS < SEQUENCE_SIZE

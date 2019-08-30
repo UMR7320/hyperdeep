@@ -257,6 +257,7 @@ def predict(text_file, model_file, config, vectors_file):
 	# preprocess data
 	preprocessing = PreProcessing()
 	preprocessing.loadData(text_file, model_file, config, create_dictionnary = False)
+	raw_text = open(text_file, "r").read().split()
 
 	# get dictionnaries
 	dictionaries = preprocessing.dictionaries
@@ -332,6 +333,7 @@ def predict(text_file, model_file, config, vectors_file):
 		attention = False
 
 	# READ PREDICTION SENTENCE BY SENTENCE
+	word_nb = 0
 	for sentence_nb in range(len(x_data[channel])):
 		print(sentence_nb , "/" , len(x_data[channel]))
 		sentence = {}
@@ -373,13 +375,17 @@ def predict(text_file, model_file, config, vectors_file):
 				channel_name = "channel" + str(channel)
 				word[channel_name] = {}
 				index = x_data[channel][sentence_nb][i]
-				word[channel_name]["str"] = dictionaries[channel]["index_word"].get(index, "PAD")
+				word[channel_name]["str"] = dictionaries[channel]["index_word"][index]
+				if word[channel_name]["str"] == "UK":
+					word[channel_name]["str"] = raw_text[word_nb].split("**")[channel]
 				word[channel_name]["tds"] = str(tds_value)
 				word[channel_name]["attention"] = str(attention_value)
 				if config["ENABLE_LIME"]:
 					word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
 			
 			sentence["sentence"] += [word]
+
+			word_nb += 1
 		
 		result.append(sentence)
 
