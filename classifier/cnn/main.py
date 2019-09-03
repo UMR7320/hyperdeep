@@ -93,7 +93,7 @@ class PreProcessing:
 		labels = labels[indices]
 		self.y_train = labels[:-nb_validation_samples]
 		self.y_val = labels[-nb_validation_samples:]
-
+		print(config)
 		self.x_train = []
 		self.x_val = []
 		for data in datas:
