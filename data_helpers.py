@@ -37,7 +37,10 @@ def tokenize(texts, model_file, create_dictionnary, config):
 
 					else:        
 						# FOR UNKNOWN WORDS
-						dictionaries[i]["word_index"][word] = dictionaries[i]["word_index"]["UK"]
+						try:
+							dictionaries[i]["word_index"][word] = dictionaries[i]["word_index"]["UK"]
+						except:
+							dictionaries[i]["word_index"][word] = dictionaries[i]["word_index"]["PAD"]
 				sentence.append(dictionaries[i]["word_index"][word])
 
 			# COMPLETE WITH PAD IF LENGTH IS < SEQUENCE_SIZE
