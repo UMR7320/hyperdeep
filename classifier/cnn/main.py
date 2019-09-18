@@ -315,6 +315,13 @@ def predict(text_file, model_file, config, vectors_file):
 		#deconv_model.summary()
 		#tds = deconv_model.predict(x_data)
 
+		# LAST LAYER
+		layer_outputs = [layer.output for layer in classifier.layers[:-1]] 
+		last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+		last_model.summary()
+		last = last_model.predict(x_data)[-1]
+		print(last)
+
 		# DECONV BY CONV2DTRANSPOSE
 		tds = []
 		for channel in range(len(x_data)):
@@ -338,7 +345,7 @@ def predict(text_file, model_file, config, vectors_file):
 		print(sentence_nb , "/" , len(x_data[channel]))
 		sentence = {}
 		sentence["sentence"] = []
-		sentence["prediction"] = predictions[sentence_nb].tolist()
+		sentence["prediction"] = last[sentence_nb].tolist()
 
 		# READ SENTENCE WORD BY WORD
 		for i in range(config["SEQUENCE_SIZE"]):

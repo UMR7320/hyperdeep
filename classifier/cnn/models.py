@@ -228,7 +228,9 @@ class CNNModel:
 		crossentropy = 'categorical_crossentropy'
 		output_acivation = 'softmax'
 
-		output = Dense(config["num_classes"], activation=output_acivation)(hidden_dense)
+		output = Dense(config["num_classes"])(hidden_dense)
+		output = Activation(output_acivation)(output)
+
 		print("output :", output.shape)
 
 		# -----------------
