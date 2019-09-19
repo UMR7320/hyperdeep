@@ -316,7 +316,7 @@ def predict(text_file, model_file, config, vectors_file):
 		#tds = deconv_model.predict(x_data)
 
 		# LAST LAYER
-		layer_outputs = [layer.output for layer in classifier.layers[:-1]] 
+		layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
 		last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 		last_model.summary()
 		last = last_model.predict(x_data)[-1]
