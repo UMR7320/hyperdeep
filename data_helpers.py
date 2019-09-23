@@ -35,7 +35,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						skip_word = False
 						for spec in config["Z_SCORE"].values():
 							if word.isdigit() or len(word) or (word in spec[type].keys() and spec[type][word]["f"] ==   spec[type][word]["k"]):
-								is_specific = True
+								skip_word = True
 								break
 
 						if skip_word: # Short words considers has UK
