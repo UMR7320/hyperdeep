@@ -34,7 +34,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 					if create_dictionnary:
 						skip_word = False
 						for spec in config["Z_SCORE"].values():
-							if word.isdigit() or len(word) or (word in spec[type].keys() and spec[type][word]["f"] ==   spec[type][word]["k"]):
+							if word.isdigit() or len(word) == 1 or (word in spec[type].keys() and spec[type][word]["f"] ==   spec[type][word]["k"]):
 								skip_word = True
 								break
 
