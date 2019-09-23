@@ -34,14 +34,13 @@ def tokenize(texts, model_file, create_dictionnary, config):
 					if create_dictionnary:
 						skip_word = False
 						for spec in config["Z_SCORE"].values():
-							if word.isdigit() or len(word) == 1 or (word in spec[type[i]].keys() and spec[type[i]][word]["z"] < 2 and spec[type[i]][word]["z"] > -2):
+							if word.isdigit() or len(word) == 1 or (word in spec[type[i]].keys() and spec[type[i]][word]["f"] != spec[type[i]][word]["z"]):
 								skip_word = True
 								break
 
 						if skip_word: # Short words considers has UK
 							dictionaries[i]["word_index"][word] = dictionary["word_index"]["UK"]
 						else:	 
-							print("keep: ", word)
 							indexes[i] += 1
 							dictionaries[i]["word_index"][word] = indexes[i]
 							dictionaries[i]["index_word"][indexes[i]] = word
