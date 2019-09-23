@@ -39,9 +39,9 @@ def tokenize(texts, model_file, create_dictionnary, config):
 								break
 
 						if skip_word: # Short words considers has UK
-							print("remove: ", word)
 							dictionaries[i]["word_index"][word] = dictionary["word_index"]["UK"]
 						else:	 
+							print("keep: ", word)
 							indexes[i] += 1
 							dictionaries[i]["word_index"][word] = indexes[i]
 							dictionaries[i]["index_word"][indexes[i]] = word
