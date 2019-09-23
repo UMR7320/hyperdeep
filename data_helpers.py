@@ -20,6 +20,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			dictionaries = pickle.load(handle)
 	datas = []		
 
+	type = [FORME, CODE, LEMME]
 	for i, text in texts.items():
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]
 
@@ -31,13 +32,13 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			for word in words:
 				if word not in dictionaries[i]["word_index"].keys():
 					if create_dictionnary:
-						is_specific = False
+						skip_word = False
 						for spec in config["Z_SCORE"].values():
-							if word in spec["FORME"].keys() and spec["FORME"][word]["f"] ==   spec["FORME"][word]["k"]:
+							if word.isdigit() or len(word) or (word in spec[type].keys() and spec[type][word]["f"] ==   spec[type][word]["k"]):
 								is_specific = True
 								break
 
-						if is_specific == 1 or len(word) == 1: # Short words considers has UK
+						if skip_word: # Short words considers has UK
 							print("remove: ", word)
 							dictionaries[i]["word_index"][word] = dictionary["word_index"]["UK"]
 						else:	 
