@@ -10,10 +10,10 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			dictionary = {}
 			dictionary["word_index"] = {}
 			dictionary["index_word"] = {}
-			dictionary["word_index"]["PAD"] = 0
+			dictionary["word_index"]["PAD"] = 0  # Padding
 			dictionary["index_word"][0] = "PAD"
-			dictionary["word_index"]["UK"] = 1
-			dictionary["index_word"][1] = "UK"
+			dictionary["word_index"]["UK"] = 1 # Unknown word
+			dictionary["index_word"][1] = "UK" 
 			dictionaries += [dictionary]
 	else:
 		with open(model_file + ".index", 'rb') as handle:
@@ -31,9 +31,13 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			for word in words:
 				if word not in dictionaries[i]["word_index"].keys():
 					if create_dictionnary:
-						indexes[i] += 1
-						dictionaries[i]["word_index"][word] = indexes[i]
-						dictionaries[i]["index_word"][indexes[i]] = word
+						if len(word) < 3: # Short words considers has UK
+							dictionaries[i]["word_index"][word] = dictionary["word_index"]["UK"]
+							dictionaries[i]["index_word"][dictionary["word_index"]["UK"]] = word
+						else:	 
+							indexes[i] += 1
+							dictionaries[i]["word_index"][word] = indexes[i]
+							dictionaries[i]["index_word"][indexes[i]] = word
 
 					else:        
 						# FOR UNKNOWN WORDS
