@@ -20,7 +20,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			dictionaries = pickle.load(handle)
 	datas = []		
 
-	type = [FORME, CODE, LEMME]
+	type = ["FORME", "CODE", "LEM"]
 	for i, text in texts.items():
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]
 
