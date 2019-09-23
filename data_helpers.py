@@ -33,7 +33,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 					if create_dictionnary:
 						if len(word) < 3: # Short words considers has UK
 							dictionaries[i]["word_index"][word] = dictionary["word_index"]["UK"]
-							dictionaries[i]["index_word"][dictionary["word_index"]["UK"]] = word
 						else:	 
 							indexes[i] += 1
 							dictionaries[i]["word_index"][word] = indexes[i]
