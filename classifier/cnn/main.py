@@ -93,7 +93,6 @@ class PreProcessing:
 		labels = labels[indices]
 		self.y_train = labels[:-nb_validation_samples]
 		self.y_val = labels[-nb_validation_samples:]
-		print(config)
 		self.x_train = []
 		self.x_val = []
 		for data in datas:
@@ -305,6 +304,12 @@ def predict(text_file, model_file, config, vectors_file):
 		elif type(layer) is Activation:
 			last_attention_layer = i+1
 		i += 1
+
+	# LAST LAYER
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
+	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	last_model.summary()
+	last = last_model.predict(x_data)[-1]
 	
 	# TDS
 	if config["ENABLE_CONV"]:
@@ -314,13 +319,6 @@ def predict(text_file, model_file, config, vectors_file):
 		#deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 		#deconv_model.summary()
 		#tds = deconv_model.predict(x_data)
-
-		# LAST LAYER
-		layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
-		last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-		last_model.summary()
-		last = last_model.predict(x_data)[-1]
-		print(last)
 
 		# DECONV BY CONV2DTRANSPOSE
 		tds = []
