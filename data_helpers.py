@@ -31,13 +31,11 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			for word in words:
 				if word not in dictionaries[i]["word_index"].keys():
 					if create_dictionnary:
-						"""
 						is_specific = False
 						for spec in config["Z_SCORE"].values():
-							if word in spec["FORME"].keys() and spec["FORME"][word]["z"] > 5:
+							if word in spec["FORME"].keys() and spec["FORME"][word]["f"] ==   spec["FORME"][word]["k"]:
 								is_specific = True
 								break
-						"""
 
 						if len(word) == 1: # Short words considers has UK
 							print("remove: ", word)
