@@ -32,17 +32,19 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			for word in words:
 				if word not in dictionaries[i]["word_index"].keys():
 					if create_dictionnary:
-						skip_word = False
-						for spec in config["Z_SCORE"].values():
-							
-							# FILTERS
-							skip_word = skip_word or word.isdigit() # not a number
-							skip_word = skip_word or len(word) == 1 # len > 1
-							try: # f > k+10%
-								test_k = spec[type[i]][word]["k"] + (spec[type[i]][word]["k"]*2/100)
-								skip_word = skip_word or spec[type[i]][word]["f"] < test_k
-							except :
-								pass
+						# FILTERS
+						# not a number and len > 1
+						skip_word = word.isdigit() or len(word) == 1
+						if not skip_word: # f > k+2%
+							for spec in config["Z_SCORE"].values():
+								try:
+									test_k = spec[type[i]][word]["k"] + (spec[type[i]][word]["k"]*0.1)
+									if spec[type[i]][word]["f"] < test_k:
+										print("skip : ", word, spec[type[i]][word]["f"] , " < ", spec[type[i]][word]["k"])
+										skip_word = True
+										break
+								except :
+									pass
 
 						# IF WORD IS SKIPED THEN ADD "UK" word
 						if skip_word: 
