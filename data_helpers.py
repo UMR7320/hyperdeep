@@ -40,7 +40,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 							skip_word = skip_word or len(word) == 1 # len > 1
 							try: # f > k+10%
 								test_k = spec[type[i]][word]["k"] + (spec[type[i]][word]["k"]*10/100)
-								skip_word = spec[type[i]][word]["f"] > test_k
+								skip_word = spec[type[i]][word]["f"] < test_k
 							except :
 								pass
 
