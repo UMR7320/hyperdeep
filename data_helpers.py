@@ -39,7 +39,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 							for spec in config["Z_SCORE"].values():
 								try:
 									test_k = spec[type[i]][word]["k"] + (spec[type[i]][word]["k"]*0.1)
-									if spec[type[i]][word]["f"] < test_k:
+									if spec[type[i]][word]["f"] < test_k or spec[type[i]][word]["f"] < 100:
 										print("skip : ", word, spec[type[i]][word]["f"] , " < ", spec[type[i]][word]["k"])
 										skip_word = True
 										break
