@@ -34,7 +34,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 					if create_dictionnary:
 						# FILTERS
 						# not a number and len > 1
-						skip_word = word.isdigit() or len(word) == 1 or word.istitle():
+						skip_word = word.isdigit() or len(word) == 1 or word[0].isupper():
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
 								try:
