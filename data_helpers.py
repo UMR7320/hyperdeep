@@ -34,12 +34,12 @@ def tokenize(texts, model_file, create_dictionnary, config):
 					if create_dictionnary:
 						# FILTERS
 						# not a number and len > 1
-						skip_word = word.isdigit() or len(word) == 1
+						skip_word = word.isdigit() or len(word) == 1 or word.istitle():
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
 								try:
 									test_k = spec[type[i]][word]["k"] + (spec[type[i]][word]["k"]*0.1)
-									if spec[type[i]][word]["f"] < test_k or spec[type[i]][word]["f"] < 100:
+									if spec[type[i]][word]["f"] < test_k or spec[type[i]][word]["f"] < 10:
 										print("skip : ", word, spec[type[i]][word]["f"] , " < ", spec[type[i]][word]["k"])
 										skip_word = True
 										break
