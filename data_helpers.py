@@ -25,16 +25,21 @@ def tokenize(texts, model_file, create_dictionnary, config):
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]
 
 		line_number = 0
-		for i, line in enumerate(text):
+		for line in text:
 			words = line.split()[:config["SEQUENCE_SIZE"]]
+			if type[channel] == "FORME":
+				formes = words
+			else:
+				formes = False
 			sentence_length = len(words)
 			sentence = []
-			for j, word in enumerate(words):
+			for i, word in enumerate(words):
 				if word not in dictionaries[channel]["word_index"].keys():
 					if create_dictionnary:
 						# FILTERS
 						# not a number and len > 1
-						skip_word = word.isdigit() or len(word) or text[0][i][j]
+						skip_word = word.isdigit() or len(word) == 1
+						skip_word = skip_word or (formes and formes[i][0].isupper())
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
 								try:
@@ -45,7 +50,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 										break
 								except :
 									pass
-
 						# IF WORD IS SKIPED THEN ADD "UK" word
 						if skip_word: 
 							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["UK"]
