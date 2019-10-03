@@ -41,9 +41,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						skip_word = word.isdigit() or len(word) == 1
 						skip_word = skip_word or words_formes[j][0].isupper()
 
-						if words_formes[j][0].isupper():
-							print("SKIP:", words_formes[j], word)
-
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
 								try:
