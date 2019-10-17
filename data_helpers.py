@@ -38,7 +38,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						
 						# FILTERS
 						# not a number and len > 1
-						skip_word = word.isdigit() or len(word) == 1
+						skip_word = words_formes[j].isdigit() or len(words_formes[j]) == 1
 						skip_word = skip_word or words_formes[j][0].isupper()
 
 						if not skip_word: # f > k+2%
