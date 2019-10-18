@@ -44,9 +44,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						# not a number and len > 1
 						skip_word = word.isdigit() or len(word) == 1
 						skip_word = skip_word or (word[0].isupper() and channel != 1)
-						skip_word = skip_word or (word_codes[j] == "NOM" and channel == 0)
-						if (word_codes[j] == "NOM" and channel != 1):
-							print("SKIP:", word)
+						skip_word = skip_word or (word_codes[j] == "NOM" and channel != 1)
 
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
