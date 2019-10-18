@@ -21,14 +21,18 @@ def tokenize(texts, model_file, create_dictionnary, config):
 	datas = []		
 
 	type = ["FORME", "CODE", "LEM"]
-	#text_formes = texts[0]
+	text_formes = texts[0]
+	text_codes = texts[1]
+
 	for channel, text in texts.items():
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
 
 		line_number = 0
 		for i, line in enumerate(text):
 			words = line.split()[:config["SEQUENCE_SIZE"]]
-			#words_formes = text_formes[i].split()[:config["SEQUENCE_SIZE"]]
+			
+			words_formes = text_formes[i].split()[:config["SEQUENCE_SIZE"]]
+			word_codes = text_codes[i].split()[:config["SEQUENCE_SIZE"]]
 
 			sentence_length = len(words)
 			sentence = []
@@ -39,13 +43,16 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						# FILTERS
 						# not a number and len > 1
 						skip_word = word.isdigit() or len(word) == 1
-						skip_word = skip_word or word[0].isupper()
+						skip_word = skip_word or (word[0].isupper() and channel != 1)
+						skip_word = skip_word or (word_codes[j] == "NOM" and channel == 0)
+						if (word_codes[j] == "NOM" and channel != 1):
+							print("SKIP:", word)
 
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
 								try:
 									test_k = spec[type[channel]][word]["k"] + (spec[type[channel]][word]["k"]*0.1)
-									if spec[type[channel]][word]["f"] < test_k or spec[type[channel]][word]["f"] < 10 or spec[type[channel]][word]["z"] > 20:
+									if spec[type[channel]][word]["f"] < test_k or spec[type[channel]][word]["f"] < 10:
 										#print("skip : ", word, spec[type[channel]][word]["f"] , " < ", spec[type[channel]][word]["k"])
 										skip_word = True
 										break
