@@ -106,6 +106,7 @@ if __name__ == '__main__':
             config["acc"] = scores[1]*100 # Accuracy
 
             # SAVE CONFIG FILE
+            del config["Z_SCORE"]
             config_json = open(model_file + ".config", "w")
             config_json.write(json.dumps(config))
             config_json.close()

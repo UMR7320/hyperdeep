@@ -1,6 +1,6 @@
 import random
 import numpy as np
-import timeit
+import time
 import math
 
 from keras.utils import np_utils
@@ -35,10 +35,13 @@ class PreProcessing:
 		f = open(corpus_file, "r")
 		lines = f.readlines()
 		cpt = 0
+		t0 = time.time()
 		for line in lines:
 
 			if cpt%100 == 0:
-				print(cpt, "/", len(lines))
+				t1 = time.time()
+				print(cpt, "/", len(lines), t1 - t0)
+				t0 = t1
 
 			# LABELS
 			label = line.split("__ ")[0].replace("__", "")
@@ -60,9 +63,10 @@ class PreProcessing:
 						sequence[i] += arg + " "
 					except:
 						sequence += ["PAD "]
+
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, []) + [sequence[i]]
-
+		
 			cpt += 1
 
 		f.close()
