@@ -94,6 +94,12 @@ if __name__ == '__main__':
             except:
                 config = json.loads(open("config.json", "r").read())
 
+            # GET SPEC FILE
+            try:
+                config["Z_SCORE"] = json.loads(open(corpus_file + ".spec", "r").read())
+            except:
+                config["Z_SCORE"] = {}
+
             # TRAIN
             scores = train(corpus_file, model_file, config)
             config["loss"] = scores[0]*100 # Loss

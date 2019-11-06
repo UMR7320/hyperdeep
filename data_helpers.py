@@ -48,7 +48,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 								try:
 									test_k = spec[type[channel]][word]["k"] + (spec[type[channel]][word]["k"]*0.1)
 									if spec[type[channel]][word]["f"] < test_k or spec[type[channel]][word]["f"] < 10:
-										#print("skip : ", word, spec[type[channel]][word]["f"] , " < ", spec[type[channel]][word]["k"])
 										skip_word = True
 										break
 								except :
