@@ -33,7 +33,12 @@ class PreProcessing:
 		self.num_classes = 0
 		
 		f = open(corpus_file, "r")
-		for line in f.readlines():
+		lines = f.readlines()
+		cpt = 0
+		for line in lines:
+
+			if cpt%100 == 0:
+				print(cpt, "/", len(lines))
 
 			# LABELS
 			label = line.split("__ ")[0].replace("__", "")
@@ -57,6 +62,8 @@ class PreProcessing:
 						sequence += ["PAD "]
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, []) + [sequence[i]]
+
+			cpt += 1
 
 		f.close()
 		for i, text in texts.items():
