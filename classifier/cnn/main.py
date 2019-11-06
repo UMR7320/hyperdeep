@@ -50,6 +50,10 @@ class PreProcessing:
 				self.num_classes += 1
 			label_int = label_dic[label]
 			labels += [label_int]
+			if cpt%100 == 0:
+				t1 = time.time()
+				print("LABELS", t1 - t0)
+				t0 = t1
 
 			# TEXT
 			line = line.replace("__" + label + "__ ", "")
@@ -63,9 +67,20 @@ class PreProcessing:
 						sequence[i] += arg + " "
 					except:
 						sequence += ["PAD "]
+					if cpt%100 == 0:
+			
+			if cpt%100 == 0:
+				t1 = time.time()
+				print("TEXT1", t1 - t0)
+				t0 = t1
 
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, []) + [sequence[i]]
+
+			if cpt%100 == 0:
+				t1 = time.time()
+				print("TEXT2", t1 - t0)
+				t0 = t1
 		
 			cpt += 1
 
