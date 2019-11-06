@@ -223,6 +223,7 @@ def train(corpus_file, model_file, config):
 	embedding_model.summary()
 	
 	# GET WORD EMBEDDINGS
+	"""
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
@@ -267,6 +268,7 @@ def train(corpus_file, model_file, config):
 			f.write(vector)
 		f.flush()
 		f.close()
+	"""
 	# ------------------------------------
 
 	# get score
