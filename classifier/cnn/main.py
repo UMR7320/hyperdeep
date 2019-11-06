@@ -315,7 +315,7 @@ def predict(text_file, model_file, config, vectors_file):
 	if config["ENABLE_CONV"]:
 
 		# DECONV BY READING FILTERS
-		#layer_outputs = [layer.output for layer in classifier.layers[:last_conv_layer]] 
+		#layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
 		#deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 		#deconv_model.summary()
 		#tds = deconv_model.predict(x_data)
