@@ -76,7 +76,8 @@ class PreProcessing:
 				t0 = t1
 
 			for i in range(len(sequence)):
-				texts[i] = texts.get(i, []) + [sequence[i]]
+				texts[i] = texts.get(i, [])
+				texts[i].append(sequence[i])
 
 			if cpt%100 == 0:
 				t1 = time.time()
