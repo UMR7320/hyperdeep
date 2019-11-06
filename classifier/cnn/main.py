@@ -40,7 +40,8 @@ class PreProcessing:
 
 			if cpt%100 == 0:
 				t1 = time.time()
-				print(cpt, "/", len(lines), t1 - t0)
+				print(cpt, "/", len(lines))
+				print("\tLOOP", t1 - t0)
 				t0 = t1
 
 			# LABELS
@@ -50,9 +51,10 @@ class PreProcessing:
 				self.num_classes += 1
 			label_int = label_dic[label]
 			labels += [label_int]
+
 			if cpt%100 == 0:
 				t1 = time.time()
-				print("LABELS", t1 - t0)
+				print("\tLABELS", t1 - t0)
 				t0 = t1
 
 			# TEXT
@@ -67,11 +69,10 @@ class PreProcessing:
 						sequence[i] += arg + " "
 					except:
 						sequence += ["PAD "]
-					if cpt%100 == 0:
-			
+
 			if cpt%100 == 0:
 				t1 = time.time()
-				print("TEXT1", t1 - t0)
+				print("\tTEXT1", t1 - t0)
 				t0 = t1
 
 			for i in range(len(sequence)):
@@ -79,7 +80,7 @@ class PreProcessing:
 
 			if cpt%100 == 0:
 				t1 = time.time()
-				print("TEXT2", t1 - t0)
+				print("\tTEXT2", t1 - t0)
 				t0 = t1
 		
 			cpt += 1

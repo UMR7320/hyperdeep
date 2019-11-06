@@ -43,7 +43,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						skip_word = word.isdigit() or len(word) == 1
 						skip_word = skip_word or (word[0].isupper() and channel != 1)
 
-						if not skip_word: # f > k+2%
+						if False:#not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
 								try:
 									test_k = spec[type[channel]][word]["k"] + (spec[type[channel]][word]["k"]*0.1)
