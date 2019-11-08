@@ -299,7 +299,7 @@ def predict(text_file, model_file, config, vectors_file):
 			lime_text = lime_text[:-1]
 			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
 			predicted_label = list(predictions[i]).index(max(predictions[i]))
-			exp.save_to_file("lime.html")
+			exp.save_to_file("lime_" + str(i) + ".html")
 			lime += [dict(exp.as_list(label=predicted_label))]
 			#print(predictions[i], predicted_label)
 			#print(exp.available_labels())
