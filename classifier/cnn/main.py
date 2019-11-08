@@ -41,7 +41,6 @@ class PreProcessing:
 			if cpt%100 == 0:
 				t1 = time.time()
 				print(cpt, "/", len(lines))
-				print("\tLOOP", t1 - t0)
 				t0 = t1
 
 			# LABELS
@@ -51,11 +50,6 @@ class PreProcessing:
 				self.num_classes += 1
 			label_int = label_dic[label]
 			labels += [label_int]
-
-			if cpt%100 == 0:
-				t1 = time.time()
-				print("\tLABELS", t1 - t0)
-				t0 = t1
 
 			# TEXT
 			line = line.replace("__" + label + "__ ", "")
@@ -70,19 +64,9 @@ class PreProcessing:
 					except:
 						sequence += ["PAD "]
 
-			if cpt%100 == 0:
-				t1 = time.time()
-				print("\tTEXT1", t1 - t0)
-				t0 = t1
-
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, [])
 				texts[i].append(sequence[i])
-
-			if cpt%100 == 0:
-				t1 = time.time()
-				print("\tTEXT2", t1 - t0)
-				t0 = t1
 		
 			cpt += 1
 
@@ -417,7 +401,10 @@ def predict(text_file, model_file, config, vectors_file):
 				word[channel_name]["tds"] = str(tds_value)
 				word[channel_name]["attention"] = str(attention_value)
 				if config["ENABLE_LIME"]:
-					word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
+					try:
+						word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
+					except:
+						word[channel_name]["lime"] = lime[sentence_nb]["UK"]
 			
 			sentence["sentence"] += [word]
 
