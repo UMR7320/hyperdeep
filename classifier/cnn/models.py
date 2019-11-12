@@ -44,19 +44,14 @@ class CNNModel:
 			nb_channels = 3
 		else:
 			nb_channels = 1
+
 		inputs = [0]*nb_channels
 		embedding = [0]*nb_channels
-		reshape = [0]*nb_channels
-		reshape2 = [0]*nb_channels
-		conv = [0]*nb_channels
-		deconv = [0]*nb_channels
-		deconv_model = [0]*nb_channels
-		conv_representation = [0]*nb_channels
-		pool = [0]*nb_channels
 
-		#lstm = [0]*nb_channels
-		#attention = [0]*nb_channels
-		#sent_representation = [0]*nb_channels
+		config["FILTER_SIZES"] = config["FILTER_SIZES"].split("-")
+		
+		conv = [0]*nb_channels
+		pool = [0]*nb_channels
 
 		for i in range(nb_channels):
 			print("CHANNELS ", i)
@@ -79,94 +74,28 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
-			# CONVOLUTION 1D
-			#conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=config["FILTER_SIZES"], padding='same', kernel_initializer='normal', activation='relu')(embedding[i])
+			last_layer = embedding[i]
 
-			# CONVOLUTION 2D
-			reshape[i] = Reshape((config["SEQUENCE_SIZE"], config["EMBEDDING_DIM"], 1))(embedding[i])
-			conv[i] = Conv2D(filters=config["NB_FILTERS"], kernel_size=(config["FILTER_SIZES"], config["EMBEDDING_DIM"]), strides=1, padding='valid', kernel_initializer='normal', activation='relu')(reshape[i])
+			for FILTER_SIZES in config["FILTER_SIZES"]:
+				FILTER_SIZES = int(FILTER_SIZES)
 
-			# DECONVOLUTION 2D
-			deconv[i] = Conv2DTranspose(1, (config["FILTER_SIZES"], config["EMBEDDING_DIM"]), padding='valid', kernel_initializer='normal', activation='relu', data_format='channels_last')(conv[i])
-			deconv_model[i] = Model(inputs=inputs[i], outputs=deconv[i])
-			print("deconv", i,  deconv[i].shape)
-			
-			# WITH RNN
-			if config["ENABLE_LSTM"]:
-				conv_shape = conv[i].shape[1:]
-				pool[i] = Reshape((int(conv_shape[0]),int(np.prod(conv_shape[1:]))))(conv[i])
+				# CONVOLUTION 2D
+				conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
+				print("conv", i,  conv[i].shape)
+				pool[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='same')(conv[i])
+				print("pool", i,  pool[i].shape)
+				last_layer = pool[i]
 
-			# WITHOUT RNN
-			else:
-				#pool[i] = MaxPooling1D(pool_size=config["SEQUENCE_SIZE"]-2, strides=None, padding='same')(conv[i])
-				pool[i] = MaxPooling2D(pool_size=(config["SEQUENCE_SIZE"] - config["FILTER_SIZES"] + 1, 1), strides=(1, config["EMBEDDING_DIM"]), padding='valid', data_format='channels_last')(conv[i])
-
-			print("conv", i,  pool[i].shape)
-
-			# DECONVOLUTION 1D
-			#deconv[i] = UpSampling1D(size=config["SEQUENCE_SIZE"]+2)(pool[i])
-			#deconv[i] = Conv1D(filters=config["NB_FILTERS"], kernel_size=config["FILTER_SIZES"], padding='valid', kernel_initializer='normal', activation='relu')(deconv[i])
-
-			# FLATTEN
-			#flat[i] = Flatten()(pool[i])
-			#print("flat", i,  flat[i].shape)
-
-			# SUM = SENT REPRESENTATION
-			#conv_representation[i] = Lambda(lambda xin: K.sum(xin, axis=3))(deconv[i])
-			#print("Lambda :", i, conv_representation[i].shape)
-
-			"""
-			# ----------
-			# LSTM LAYER
-			# ----------
-			lstm[i] = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True))(conv_representation[i])
-			print("lstm :", lstm[i].shape)
-
-			# ---------------
-			# ATTENTION LAYER
-			# ---------------
-			attention[i] = TimeDistributed(Dense(1, activation='tanh'))(lstm[i]) 
-			print("TimeDistributed :", attention[i].shape)
-
-			# reshape Attention
-			attention[i] = Flatten()(attention[i])
-			print("Flatten :", attention[i].shape)
-			
-			attention[i] = Activation('softmax')(attention[i])
-			print("Activation :", attention[i].shape)
-
-			# Observe attention here
-			#attention_model = Model(inputs=inputs, outputs=attention)
-
-			# Pour pouvoir faire la multiplication (scalair/vecteur KERAS)
-			attention[i] = RepeatVector(config["LSTM_SIZE"]*2)(attention[i])
-			print("RepeatVector :", attention[i].shape)
-			
-			attention[i] = Permute([2, 1])(attention[i])
-			print("Permute :", attention[i].shape)
-
-			# apply the attention		
-			sent_representation[i] = multiply([lstm[i], attention[i]])
-			print("Multiply :", sent_representation[i].shape)
-			
-			#sent_representation[i] = Lambda(lambda xin: K.sum(xin, axis=2))(sent_representation[i])
-			#print("Lambda :", sent_representation[i].shape)
-			"""
+				
 			print("-"*20)
 		
 		# ------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION
 		# ------------------------------------
-		if config["ENABLE_CONV"]:
-			if config["TG"]:
-				merged = concatenate(pool)
-			else:
-				merged = pool[0]
+		if config["TG"]:
+			merged = concatenate(pool)
 		else:
-			if config["TG"]:
-				merged = concatenate(embedding)
-			else:
-				merged = embedding[0]
+			merged = pool[0]
 		print("merged", merged.shape)
 
 		if config["ENABLE_LSTM"]:
@@ -250,4 +179,4 @@ class CNNModel:
 		print("TRAINING MODEL")
 		print(model.summary())
 
-		return model, deconv_model
+		return model

@@ -180,7 +180,7 @@ def train(corpus_file, model_file, config):
 
 	# create and get model
 	cnn_model = models.CNNModel()
-	model, deconv_model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
+	model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
 
 	# train model
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
@@ -189,17 +189,7 @@ def train(corpus_file, model_file, config):
 	
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
-	# SETUP THE DECONV LAYER WEIGHTS
-	for i, deconv in enumerate(deconv_model):
-		for layer in deconv.layers:	
-			if type(layer) is Conv2D:
-				deconv_weights = layer.get_weights()[0]
-		deconv_bias = deconv.layers[-1].get_weights()[1]
-		deconv.layers[-1].set_weights([deconv_weights, deconv_bias])
-
-		# save deconv model
-		deconv.save(model_file + ".deconv" + str(i))
-
+	"""
 	# ------------------------------------
 	# GET EMBEDDING MODEL
 	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
@@ -207,7 +197,6 @@ def train(corpus_file, model_file, config):
 	embedding_model.summary()
 	
 	# GET WORD EMBEDDINGS
-	"""
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
