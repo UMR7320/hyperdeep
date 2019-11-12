@@ -2,6 +2,7 @@ import random
 import numpy as np
 import time
 import math
+import json
 
 from keras.utils import np_utils
 from keras.models import load_model
@@ -288,9 +289,8 @@ def predict(text_file, model_file, config, vectors_file):
 			lime_text = lime_text[:-1]
 			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
 			predicted_label = list(predictions[i]).index(max(predictions[i]))
-			exp.save_to_file("lime_" + str(i) + ".html")
-			lime += [dict(exp.as_list(label=predicted_label))]
 			#print(predictions[i], predicted_label)
+			lime += [dict(exp.as_list(label=predicted_label))]
 			#print(exp.available_labels())
 			#print ('\n'.join(map(str, exp.as_list(label=4))))
 
@@ -318,17 +318,18 @@ def predict(text_file, model_file, config, vectors_file):
 	# TDS
 	if config["ENABLE_CONV"]:
 
-		# DECONV BY READING FILTERS
-		#layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
-		#deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-		#deconv_model.summary()
-		#tds = deconv_model.predict(x_data)
-
 		# DECONV BY CONV2DTRANSPOSE
-		tds = []
-		for channel in range(len(x_data)):
-			deconv_model = load_model(model_file + ".deconv" + str(channel))
-			tds += [deconv_model.predict(x_data[channel])]
+		try:
+			tds = []
+			for channel in range(len(x_data)):
+				deconv_model = load_model(model_file + ".deconv" + str(channel))
+				tds += [deconv_model.predict(x_data[channel])]
+		except:
+			# DECONV BY READING FILTERS
+			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
+			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+			deconv_model.summary()
+			tds = deconv_model.predict(x_data)
 	else:
 		tds = False
 
@@ -350,6 +351,7 @@ def predict(text_file, model_file, config, vectors_file):
 		sentence["prediction"] = last[sentence_nb].tolist()
 
 		# READ SENTENCE WORD BY WORD
+		pca_array = []
 		for i in range(config["SEQUENCE_SIZE"]):
 
 			# GET ATTENTION VALUE (RNN NETWORK)
@@ -372,13 +374,14 @@ def predict(text_file, model_file, config, vectors_file):
 				#	tds_value = 0
 				#else:
 				#	tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
-				#tds_value = sum(tds[-(channel+1)][sentence_nb][i])
-				
-				# DECONV BY CONV2DTRANSPOSE
-				if not tds:
-					tds_value = 0
-				else:
-					tds_value = sum(tds[channel][sentence_nb][i])[0]
+				try:
+					tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+				except:
+					# DECONV BY CONV2DTRANSPOSE
+					if not tds:
+						tds_value = 0
+					else:
+						tds_value = sum(tds[channel][sentence_nb][i])[0]
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
@@ -390,15 +393,18 @@ def predict(text_file, model_file, config, vectors_file):
 				word[channel_name]["tds"] = str(tds_value)
 				word[channel_name]["attention"] = str(attention_value)
 				if config["ENABLE_LIME"]:
-					try:
-						word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
-					except:
-						word[channel_name]["lime"] = lime[sentence_nb]["UK"]
-			
+					word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
+				
+				pca = {}
+				pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
+				pca_array += [pca]
+
 			sentence["sentence"] += [word]
 
 			word_nb += 1
-		
+			
+			#print(json.dumps(pca_array))
+
 		result.append(sentence)
 
 		# ------ DRAW DECONV FACE ------
