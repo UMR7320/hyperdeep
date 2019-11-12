@@ -304,7 +304,7 @@ def predict(text_file, model_file, config, vectors_file):
 	i = 0
 	for layer in classifier.layers:	
 		if type(layer) is Conv1D and last_conv_layer == 0:
-			last_conv_layer = i+1
+			last_conv_layer = i+len(x_data)
 		elif type(layer) is Activation:
 			last_attention_layer = i+1
 		i += 1
