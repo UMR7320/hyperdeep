@@ -4,10 +4,11 @@ import time
 import math
 import json
 
+from keras.utils import plot_model
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation
+from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation, MaxPooling1D
 from keras.models import Model
 
 from classifier.cnn import models
@@ -299,15 +300,19 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 	# GET THE CONVOLUTIONAL LAYERS
 	isConvLayer = False
-	last_conv_layer = 0
+	last_conv_layer = []
 	last_attention_layer = 0
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Conv1D and last_conv_layer == 0:
-			last_conv_layer = i+len(x_data)
+		if type(layer) is MaxPooling1D:# and last_conv_layer == 0:
+			last_conv_layer += [i+1]#len(x_data)
 		elif type(layer) is Activation:
 			last_attention_layer = i+1
 		i += 1
+
+	last_conv_layer = last_conv_layer[2]
+	#last_conv_layer = last_conv_layer[5]
+	#last_conv_layer = last_conv_layer[8]
 
 	# LAST LAYER
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
@@ -329,6 +334,7 @@ def predict(text_file, model_file, config, vectors_file):
 			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 			deconv_model.summary()
+			plot_model(classifier, to_file='model.png')
 			tds = deconv_model.predict(x_data)
 	else:
 		tds = False
@@ -345,7 +351,7 @@ def predict(text_file, model_file, config, vectors_file):
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
 	for sentence_nb in range(len(x_data[channel])):
-		print(sentence_nb , "/" , len(x_data[channel]))
+		#print(sentence_nb , "/" , len(x_data[channel]))
 		sentence = {}
 		sentence["sentence"] = []
 		sentence["prediction"] = last[sentence_nb].tolist()
@@ -376,6 +382,7 @@ def predict(text_file, model_file, config, vectors_file):
 				#	tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
 				try:
 					tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+					#print(tds[-(channel+1)][sentence_nb].shape)
 				except:
 					# DECONV BY CONV2DTRANSPOSE
 					if not tds:

@@ -79,12 +79,12 @@ class CNNModel:
 			for FILTER_SIZES in config["FILTER_SIZES"]:
 				FILTER_SIZES = int(FILTER_SIZES)
 
-				# CONVOLUTION 2D
-				conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
+				# CONVOLUTION 1D
+				conv[i] = Conv1D(filters=config["NB_FILTERS"]*FILTER_SIZES, strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 				print("conv", i,  conv[i].shape)
-				pool[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='valid')(conv[i])
-				print("pool", i,  pool[i].shape)
-				last_layer = pool[i]
+				#pool[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='same')(conv[i])
+				#print("pool", i,  pool[i].shape)
+				last_layer = conv[i]
 
 				
 			print("-"*20)
@@ -93,7 +93,7 @@ class CNNModel:
 		# APPLY THE MULTI CHANNELS ABSTRACTION
 		# ------------------------------------
 		if config["TG"]:
-			merged = concatenate(pool)
+			merged = concatenate(conv)
 		else:
 			merged = pool[0]
 		print("merged", merged.shape)
