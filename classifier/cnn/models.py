@@ -82,7 +82,7 @@ class CNNModel:
 				# CONVOLUTION 2D
 				conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 				print("conv", i,  conv[i].shape)
-				pool[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='same')(conv[i])
+				pool[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='valid')(conv[i])
 				print("pool", i,  pool[i].shape)
 				last_layer = pool[i]
 
