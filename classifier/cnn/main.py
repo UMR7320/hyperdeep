@@ -304,15 +304,17 @@ def predict(text_file, model_file, config, vectors_file):
 	last_attention_layer = 0
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is MaxPooling1D:# and last_conv_layer == 0:
+		if type(layer) is Conv1D:# and last_conv_layer == 0:
 			last_conv_layer += [i+1]#len(x_data)
 		elif type(layer) is Activation:
 			last_attention_layer = i+1
 		i += 1
 
-	last_conv_layer = last_conv_layer[2]
+	#last_conv_layer = last_conv_layer[2]
 	#last_conv_layer = last_conv_layer[5]
 	#last_conv_layer = last_conv_layer[8]
+	
+	last_conv_layer = last_conv_layer[2]
 
 	# LAST LAYER
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
@@ -324,9 +326,10 @@ def predict(text_file, model_file, config, vectors_file):
 	if config["ENABLE_CONV"]:
 
 		# DECONV BY CONV2DTRANSPOSE
+
 		try:
 			tds = []
-			for channel in range(len(x_data)):
+			for channel in range(preprocessing.nb_channels):
 				deconv_model = load_model(model_file + ".deconv" + str(channel))
 				tds += [deconv_model.predict(x_data[channel])]
 		except:
@@ -335,7 +338,15 @@ def predict(text_file, model_file, config, vectors_file):
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 			deconv_model.summary()
 			plot_model(classifier, to_file='model.png')
+			print("READING FILTERS")
 			tds = deconv_model.predict(x_data)
+			
+			"""
+			maxpool = []
+			for e in tds[-1][0]:
+				maxpool += [e.tolist()]
+			print(json.dumps(maxpool))
+			"""
 	else:
 		tds = False
 
@@ -350,15 +361,16 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
-	for sentence_nb in range(len(x_data[channel])):
-		#print(sentence_nb , "/" , len(x_data[channel]))
+	for sentence_nb in range(len(tds[0])):
+		#print(sentence_nb , "/" , len(tds[0]))
 		sentence = {}
 		sentence["sentence"] = []
 		sentence["prediction"] = last[sentence_nb].tolist()
 
 		# READ SENTENCE WORD BY WORD
 		pca_array = []
-		for i in range(config["SEQUENCE_SIZE"]):
+		for i in range(len(tds[-1][sentence_nb])):
+			#print(i , "/" , len(tds[-1][sentence_nb]))
 
 			# GET ATTENTION VALUE (RNN NETWORK)
 			"""
@@ -373,15 +385,19 @@ def predict(text_file, model_file, config, vectors_file):
 			
 			# GET TDS VALUES
 			word = {}
-			for channel in range(len(x_data)):
+			for channel in range(preprocessing.nb_channels):
+				#print(channel , "/" , len(tds))
 
+				tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+
+				"""
 				# DECONV BY READING FILTERS
 				#if not tds or i == 0 or i == config["SEQUENCE_SIZE"]-1:
 				#	tds_value = 0
 				#else:
 				#	tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
 				try:
-					tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+					
 					#print(tds[-(channel+1)][sentence_nb].shape)
 				except:
 					# DECONV BY CONV2DTRANSPOSE
@@ -389,11 +405,15 @@ def predict(text_file, model_file, config, vectors_file):
 						tds_value = 0
 					else:
 						tds_value = sum(tds[channel][sentence_nb][i])[0]
+				"""
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
 				word[channel_name] = {}
+
+				#print(x_data[channel][sentence_nb].shape)
 				index = x_data[channel][sentence_nb][i]
+
 				word[channel_name]["str"] = dictionaries[channel]["index_word"][index]
 				if word[channel_name]["str"] == "UK":
 					word[channel_name]["str"] = raw_text[word_nb].split("**")[channel]
@@ -410,7 +430,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 			word_nb += 1
 			
-			#print(json.dumps(pca_array))
+		#print(json.dumps(pca_array))
 
 		result.append(sentence)
 

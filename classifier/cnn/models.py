@@ -80,20 +80,25 @@ class CNNModel:
 				FILTER_SIZES = int(FILTER_SIZES)
 
 				# CONVOLUTION 1D
-				conv[i] = Conv1D(filters=config["NB_FILTERS"]*FILTER_SIZES, strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
+				conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 				print("conv", i,  conv[i].shape)
-				#pool[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='same')(conv[i])
-				#print("pool", i,  pool[i].shape)
-				last_layer = conv[i]
 
+				#pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
+				#print("pool", i,  pool[i].shape)
+				
+				last_layer = conv[i]
 				
 			print("-"*20)
 		
+			pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
+			#pool[i] = UpSampling1D(2)(pool[i])
+			#pool[i] = Conv1D(filters=1, strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(pool[i])
+
 		# ------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION
 		# ------------------------------------
 		if config["TG"]:
-			merged = concatenate(conv)
+			merged = concatenate(pool)
 		else:
 			merged = pool[0]
 		print("merged", merged.shape)
@@ -149,7 +154,8 @@ class CNNModel:
 		# ------------------
 		# HIDDEN DENSE LAYER
 		# ------------------	
-		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform',activation='relu')(dropout)
+		hidden_dense = Dense(config["SEQUENCE_SIZE"], kernel_initializer='uniform',activation='relu')(dropout)
+		#hidden_dense = Activation('relu')(dropout)
 
 		# -----------------
 		# FINAL DENSE LAYER
