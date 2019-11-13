@@ -314,7 +314,7 @@ def predict(text_file, model_file, config, vectors_file):
 	#last_conv_layer = last_conv_layer[5]
 	#last_conv_layer = last_conv_layer[8]
 	
-	last_conv_layer = last_conv_layer[0]
+	last_conv_layer = last_conv_layer[-1]
 
 	# LAST LAYER
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
