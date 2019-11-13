@@ -83,16 +83,19 @@ class CNNModel:
 				conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 				print("conv", i,  conv[i].shape)
 
-				#pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
-				#print("pool", i,  pool[i].shape)
+				pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
+				print("pool", i,  pool[i].shape)
 				
-				last_layer = conv[i]
+				last_layer = pool[i]
 				
 			print("-"*20)
-		
-			pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
-			#pool[i] = UpSampling1D(2)(pool[i])
-			#pool[i] = Conv1D(filters=1, strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(pool[i])
+
+			# maxpooling		
+			#pool[i] = MaxPooling1D(pool_size=2, strides=1, padding='same')(conv[i])
+
+			# DECONVOLUTION
+			pool[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(pool[i])
+			pool[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(pool[i])
 
 		# ------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION
@@ -154,7 +157,7 @@ class CNNModel:
 		# ------------------
 		# HIDDEN DENSE LAYER
 		# ------------------	
-		hidden_dense = Dense(config["SEQUENCE_SIZE"], kernel_initializer='uniform',activation='relu')(dropout)
+		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform',activation='relu')(dropout)
 		#hidden_dense = Activation('relu')(dropout)
 
 		# -----------------

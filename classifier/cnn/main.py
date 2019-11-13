@@ -306,7 +306,7 @@ def predict(text_file, model_file, config, vectors_file):
 	for layer in classifier.layers:	
 		if type(layer) is Conv1D:# and last_conv_layer == 0:
 			last_conv_layer += [i+1]#len(x_data)
-		elif type(layer) is Activation:
+		elif type(layer) is Activation and last_attention_layer == 0:
 			last_attention_layer = i+1
 		i += 1
 
@@ -314,7 +314,7 @@ def predict(text_file, model_file, config, vectors_file):
 	#last_conv_layer = last_conv_layer[5]
 	#last_conv_layer = last_conv_layer[8]
 	
-	last_conv_layer = last_conv_layer[2]
+	last_conv_layer = last_conv_layer[0]
 
 	# LAST LAYER
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
@@ -332,13 +332,14 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(preprocessing.nb_channels):
 				deconv_model = load_model(model_file + ".deconv" + str(channel))
 				tds += [deconv_model.predict(x_data[channel])]
+			print("DECONV BY CONV2DTRANSPOSE")
 		except:
 			# DECONV BY READING FILTERS
 			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 			deconv_model.summary()
 			plot_model(classifier, to_file='model.png')
-			print("READING FILTERS")
+			print("DECONV BY READING FILTERS")
 			tds = deconv_model.predict(x_data)
 			
 			"""
@@ -354,6 +355,7 @@ def predict(text_file, model_file, config, vectors_file):
 	if config["ENABLE_LSTM"]:
 		layer_outputs2 = [layer.output for layer in classifier.layers[len(x_data):last_attention_layer]] 
 		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
+		print("ATTENTION summary:")
 		attention_model.summary()
 		attention = attention_model.predict(x_data)
 	else:
