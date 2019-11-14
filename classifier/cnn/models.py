@@ -76,34 +76,38 @@ class CNNModel:
 
 			last_layer = embedding[i]
 
-			for FILTER_SIZES in config["FILTER_SIZES"]:
-				FILTER_SIZES = int(FILTER_SIZES)
+			# CONVOLUTIONs
+			if config["ENABLE_CONV"]:
+				for FILTER_SIZES in config["FILTER_SIZES"]:
+					FILTER_SIZES = int(FILTER_SIZES)
+					
+					conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
+					print("conv", i,  conv[i].shape)
 
-				# CONVOLUTION 1D
-				conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
-				print("conv", i,  conv[i].shape)
+					pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
+					print("pool", i,  pool[i].shape)
+					
+					last_layer = pool[i]
+					
+				print("-"*20)
 
-				pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
-				print("pool", i,  pool[i].shape)
-				
-				last_layer = pool[i]
-				
-			print("-"*20)
-
-			# maxpooling		
-			#pool[i] = MaxPooling1D(pool_size=2, strides=1, padding='same')(conv[i])
-
-			# DECONVOLUTION
-			pool[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(pool[i])
-			pool[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(pool[i])
+				# DECONVOLUTION
+				conv[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(last_layer)
+				conv[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(conv[i])
 
 		# ------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION
 		# ------------------------------------
-		if config["TG"]:
-			merged = concatenate(pool)
+		if config["ENABLE_CONV"]:
+			if config["TG"]:
+				merged = concatenate(conv)
+			else:
+				merged = conv[0]
 		else:
-			merged = pool[0]
+			if config["TG"]:
+				merged = concatenate(embedding)
+			else:
+				merged = embedding[0]
 		print("merged", merged.shape)
 
 		if config["ENABLE_LSTM"]:
@@ -116,7 +120,7 @@ class CNNModel:
 			# ----------
 			# LSTM LAYER
 			# ----------
-			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged)
+			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(embedding[0])
 			print("rnn :", rnn.shape)
 
 			# ---------------

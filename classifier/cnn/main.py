@@ -332,7 +332,7 @@ def predict(text_file, model_file, config, vectors_file):
 			#last_conv_layer = last_conv_layer[5]
 			#last_conv_layer = last_conv_layer[8]
 			
-			last_conv_layer = last_conv_layer[2]
+			last_conv_layer = last_conv_layer[-1]
 
 			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
@@ -362,23 +362,17 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
-	for sentence_nb in range(len(tds[0])):
-		print(sentence_nb , "/" , len(tds[0]))
+	for sentence_nb in range(len(x_data[0])):
+		print(sentence_nb , "/" , len(x_data[0]))
 		sentence = {}
 		sentence["sentence"] = []
 		sentence["prediction"] = last[sentence_nb].tolist()
 
 		# READ SENTENCE WORD BY WORD
 		pca_array = []
-		for i in range(len(tds[-1][sentence_nb])):
+		for i in range(len(x_data[0][sentence_nb])):
 			#print(i , "/" , len(tds[-1][sentence_nb]))
 
-			# GET ATTENTION VALUE (RNN NETWORK)
-			"""
-			if not attention or i >= config["SEQUENCE_SIZE"]-2:
-				attention_value = 0
-			else:
-			"""
 			try:
 				attention_value = attention[-1][sentence_nb][i]						# ATTENTION
 			except:
@@ -389,12 +383,15 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(preprocessing.nb_channels):
 				#print(channel , "/" , len(tds))
 
-				try:
-					# DECONV BY READING FILTERS
-					tds_value = sum(tds[channel][sentence_nb][i])[0]
-				except:
-					# DECONV BY CONV2DTRANSPOSE
-					tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+				if tds:
+					try:
+						# DECONV BY READING FILTERS
+						tds_value = sum(tds[channel][sentence_nb][i])[0]
+					except:
+						# DECONV BY CONV2DTRANSPOSE
+						tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+				else:
+					tds_value = 0
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
@@ -411,9 +408,9 @@ def predict(text_file, model_file, config, vectors_file):
 				if config["ENABLE_LIME"]:
 					word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
 				
-				pca = {}
-				pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
-				pca_array += [pca]
+				#pca = {}
+				#pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
+				#pca_array += [pca]
 
 			sentence["sentence"] += [word]
 
