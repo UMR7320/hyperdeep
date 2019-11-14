@@ -310,12 +310,6 @@ def predict(text_file, model_file, config, vectors_file):
 			last_attention_layer = i+1
 		i += 1
 
-	#last_conv_layer = last_conv_layer[2]
-	#last_conv_layer = last_conv_layer[5]
-	#last_conv_layer = last_conv_layer[8]
-	
-	last_conv_layer = last_conv_layer[-1]
-
 	# LAST LAYER
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
 	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
@@ -326,7 +320,6 @@ def predict(text_file, model_file, config, vectors_file):
 	if config["ENABLE_CONV"]:
 
 		# DECONV BY CONV2DTRANSPOSE
-
 		try:
 			tds = []
 			for channel in range(preprocessing.nb_channels):
@@ -335,6 +328,12 @@ def predict(text_file, model_file, config, vectors_file):
 			print("DECONV BY CONV2DTRANSPOSE")
 		except:
 			# DECONV BY READING FILTERS
+			#last_conv_layer = last_conv_layer[2]
+			#last_conv_layer = last_conv_layer[5]
+			#last_conv_layer = last_conv_layer[8]
+			
+			last_conv_layer = last_conv_layer[2]
+
 			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 			deconv_model.summary()
@@ -364,7 +363,7 @@ def predict(text_file, model_file, config, vectors_file):
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
 	for sentence_nb in range(len(tds[0])):
-		#print(sentence_nb , "/" , len(tds[0]))
+		print(sentence_nb , "/" , len(tds[0]))
 		sentence = {}
 		sentence["sentence"] = []
 		sentence["prediction"] = last[sentence_nb].tolist()
@@ -390,24 +389,12 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(preprocessing.nb_channels):
 				#print(channel , "/" , len(tds))
 
-				tds_value = sum(tds[-(channel+1)][sentence_nb][i])
-
-				"""
-				# DECONV BY READING FILTERS
-				#if not tds or i == 0 or i == config["SEQUENCE_SIZE"]-1:
-				#	tds_value = 0
-				#else:
-				#	tds_value = sum(tds[-(channel+1)][sentence_nb][i-1])			# TDS
 				try:
-					
-					#print(tds[-(channel+1)][sentence_nb].shape)
+					# DECONV BY READING FILTERS
+					tds_value = sum(tds[channel][sentence_nb][i])[0]
 				except:
 					# DECONV BY CONV2DTRANSPOSE
-					if not tds:
-						tds_value = 0
-					else:
-						tds_value = sum(tds[channel][sentence_nb][i])[0]
-				"""
+					tds_value = sum(tds[-(channel+1)][sentence_nb][i])
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
