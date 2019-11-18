@@ -124,7 +124,7 @@ class CNNModel:
 			# ----------
 			# LSTM LAYER
 			# ----------
-			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged[0])
+			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged)
 			print("rnn :", rnn.shape)
 
 			# ---------------
