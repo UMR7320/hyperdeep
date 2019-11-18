@@ -76,7 +76,7 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
-			embedding[i] = BatchNormalization()(embedding[i])
+			#<embedding[i] = BatchNormalization()(embedding[i])
 
 			last_layer = embedding[i]
 
@@ -124,7 +124,7 @@ class CNNModel:
 			# ----------
 			# LSTM LAYER
 			# ----------
-			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(embedding[0])
+			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged[0])
 			print("rnn :", rnn.shape)
 
 			# ---------------
