@@ -1,6 +1,8 @@
 import numpy as np
 
 from keras import optimizers
+from keras import regularizers
+
 from keras import backend as K
 from keras.models import Sequential,Model
 from keras.layers import Dense
@@ -73,6 +75,8 @@ class CNNModel:
 				trainable=config["EMBEDDING_TRAINABLE"]
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
+
+			embedding[i] = BatchNormalization()(embedding[i])
 
 			last_layer = embedding[i]
 
@@ -170,7 +174,7 @@ class CNNModel:
 		crossentropy = 'categorical_crossentropy'
 		output_acivation = 'softmax'
 
-		output = Dense(config["num_classes"])(hidden_dense)
+		output = Dense(config["num_classes"],kernel_regularizer=regularizers.l1(0.01))(hidden_dense)
 		output = Activation(output_acivation)(output)
 
 		print("output :", output.shape)
