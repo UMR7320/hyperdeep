@@ -92,12 +92,13 @@ class CNNModel:
 					print("pool", i,  pool[i].shape)
 					
 					last_layer = pool[i]
-					
-				print("-"*20)
 
 				# DECONVOLUTION
 				conv[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(last_layer)
 				conv[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(conv[i])
+
+				# TDS 
+				conv[i] = Lambda(lambda x: K.sum(x, axis=2))(conv[i])
 
 		# ------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION
@@ -157,9 +158,10 @@ class CNNModel:
 			# -------------
 			flat = Flatten()(sent_representation)
 		else:
-			flat = Flatten()(merged)
+			#flat = Flatten()(merged)
+			pass
 			
-		dropout = Dropout(config["DROPOUT_VAL"])(flat)
+		dropout = Dropout(config["DROPOUT_VAL"])(merged)
 		print("Dropout :", dropout.shape)
 
 		# ------------------

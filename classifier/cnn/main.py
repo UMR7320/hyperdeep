@@ -8,7 +8,7 @@ from keras.utils import plot_model
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation, MaxPooling1D
+from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation, MaxPooling1D, Dense, Lambda
 from keras.models import Model
 
 from classifier.cnn import models
@@ -270,6 +270,9 @@ def predict(text_file, model_file, config, vectors_file):
 	print("PREDICTION")
 	print("----------------------------")
 	classifier = load_model(model_file)
+
+	plot_model(classifier,show_shapes=False, to_file='model.dot')
+	plot_model(classifier, to_file='model.png')
 	
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
@@ -302,12 +305,22 @@ def predict(text_file, model_file, config, vectors_file):
 	isConvLayer = False
 	last_conv_layer = []
 	last_attention_layer = 0
+	
+	dense_weights = []
+	
 	i = 0
 	for layer in classifier.layers:	
-		if type(layer) is Conv1D:# and last_conv_layer == 0:
-			last_conv_layer += [i+1]#len(x_data)
+		print(type(layer), i)
+
+		if type(layer) is Dense:
+			dense_weights += [layer.get_weights()[0]]
+		
+		elif type(layer) is Lambda:
+			last_conv_layer += [i+1]
+		
 		elif type(layer) is Activation and last_attention_layer == 0:
 			last_attention_layer = i+1
+
 		i += 1
 
 	# LAST LAYER
@@ -331,13 +344,15 @@ def predict(text_file, model_file, config, vectors_file):
 			#last_conv_layer = last_conv_layer[2]
 			#last_conv_layer = last_conv_layer[5]
 			#last_conv_layer = last_conv_layer[8]
+
+			print("last_conv_layer:", last_conv_layer)
 			
 			last_conv_layer = last_conv_layer[-1]
 
 			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 			deconv_model.summary()
-			plot_model(classifier, to_file='model.png')
+			#plot_model(classifier, to_file='model.png')
 			print("DECONV BY READING FILTERS")
 			tds = deconv_model.predict(x_data)
 			
@@ -363,6 +378,11 @@ def predict(text_file, model_file, config, vectors_file):
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
 	for sentence_nb in range(len(x_data[0])):
+
+		# CSV
+		csv = "Source;Target;Weight;Type\n"
+		csv2= "ID;Type\n"
+
 		print(sentence_nb , "/" , len(x_data[0]))
 		sentence = {}
 		sentence["sentence"] = []
@@ -385,8 +405,9 @@ def predict(text_file, model_file, config, vectors_file):
 
 				if tds:
 					try:
-						# DECONV BY READING FILTERS
-						tds_value = sum(tds[channel][sentence_nb][i])[0]
+						# DECONV BY READING FILTERS)
+						tds_value = tds[-1][sentence_nb][i]
+						#print(tds_value)
 					except:
 						# DECONV BY CONV2DTRANSPOSE
 						tds_value = sum(tds[-(channel+1)][sentence_nb][i])
@@ -412,11 +433,37 @@ def predict(text_file, model_file, config, vectors_file):
 				#pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
 				#pca_array += [pca]
 
-			sentence["sentence"] += [word]
+				for _i, w_i in enumerate(dense_weights[0][i]): # 50/100
+					#if tds_value == 0: continue
+					wi_tds = math.exp(w_i)*math.exp(tds_value)
+					ni = "n" + str(_i)
+					csv += str(i) + "_" + word[channel_name]["str"] + ";"
+					csv += ni + ";" + str(wi_tds) + ";Directed\n"
+
+
+					for _j, w_j in enumerate(dense_weights[1][_i]): # 100/2
+						#if tds_value == 0: continue
+						print("wi_tds:", str(wi_tds))
+						wj_tds = math.exp(w_j)*wi_tds
+						csv += ni + ";"
+						csv += config["CLASSES"][_j] + ";" + str(wj_tds) + ";Directed\n"
+
+				csv2 += str(i) + "_" + word[channel_name]["str"] + ";" + "input\n"
+
+			sentence["sentence"] += [word]	
 
 			word_nb += 1
 			
 		#print(json.dumps(pca_array))
+
+		for _i in range(len(dense_weights[0][0])):
+			csv2 += "n" + str(_i) + ";" + "hidden\n"
+		for _j in range(len(dense_weights[1][0])):
+			csv2 += config["CLASSES"][_j] + ";" + "output\n"
+		csv_out = open("links.csv", "w")
+		csv_out.write(csv)
+		csv_out = open("nodes.csv", "w")
+		csv_out.write(csv2)
 
 		result.append(sentence)
 
