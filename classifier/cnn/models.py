@@ -76,7 +76,7 @@ class CNNModel:
 			)(inputs[i])
 			print("embedding", i,  embedding[i].shape)
 
-			#<embedding[i] = BatchNormalization()(embedding[i])
+			#embedding[i] = BatchNormalization()(embedding[i])
 
 			last_layer = embedding[i]
 
@@ -88,17 +88,17 @@ class CNNModel:
 					conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 					print("conv", i,  conv[i].shape)
 
-					pool[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
-					print("pool", i,  pool[i].shape)
+					conv[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
+					print("pool", i,  conv[i].shape)
 					
-					last_layer = pool[i]
+					last_layer = conv[i]
 
 				# DECONVOLUTION
 				conv[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(last_layer)
 				conv[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(conv[i])
 
 				# TDS 
-				conv[i] = Lambda(lambda x: K.sum(x, axis=2))(conv[i])
+				#conv[i] = Lambda(lambda x: K.sum(x, axis=2))(conv[i])
 
 		# ------------------------------------		
 		# APPLY THE MULTI CHANNELS ABSTRACTION
@@ -158,11 +158,11 @@ class CNNModel:
 			# -------------
 			flat = Flatten()(sent_representation)
 		else:
-			#flat = Flatten()(merged)
-			pass
+			flat = Flatten()(merged)
+			#flat = merged
 			
-		dropout = Dropout(config["DROPOUT_VAL"])(merged)
-		print("Dropout :", dropout.shape)
+		dropout = Dropout(config["DROPOUT_VAL"])(flat)
+		#print("Dropout :", dropout.shape)
 
 		# ------------------
 		# HIDDEN DENSE LAYER
@@ -176,7 +176,7 @@ class CNNModel:
 		crossentropy = 'categorical_crossentropy'
 		output_acivation = 'softmax'
 
-		output = Dense(config["num_classes"],kernel_regularizer=regularizers.l1(0.01))(hidden_dense)
+		output = Dense(config["num_classes"],kernel_regularizer=regularizers.l1(0.05))(hidden_dense)
 		output = Activation(output_acivation)(output)
 
 		print("output :", output.shape)

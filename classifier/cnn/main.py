@@ -315,7 +315,7 @@ def predict(text_file, model_file, config, vectors_file):
 		if type(layer) is Dense:
 			dense_weights += [layer.get_weights()[0]]
 		
-		elif type(layer) is Lambda:
+		elif type(layer) is Conv1D:
 			last_conv_layer += [i+1]
 		
 		elif type(layer) is Activation and last_attention_layer == 0:
@@ -388,6 +388,8 @@ def predict(text_file, model_file, config, vectors_file):
 		sentence["sentence"] = []
 		sentence["prediction"] = last[sentence_nb].tolist()
 
+		total = {}
+
 		# READ SENTENCE WORD BY WORD
 		pca_array = []
 		for i in range(len(x_data[0][sentence_nb])):
@@ -406,7 +408,8 @@ def predict(text_file, model_file, config, vectors_file):
 				if tds:
 					try:
 						# DECONV BY READING FILTERS)
-						tds_value = tds[-1][sentence_nb][i]
+						#tds_value = tds[-1][sentence_nb][i]
+						tds_value = sum(tds[channel][sentence_nb][i])[0]
 						#print(tds_value)
 					except:
 						# DECONV BY CONV2DTRANSPOSE
@@ -433,20 +436,43 @@ def predict(text_file, model_file, config, vectors_file):
 				#pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
 				#pca_array += [pca]
 
-				for _i, w_i in enumerate(dense_weights[0][i]): # 50/100
-					#if tds_value == 0: continue
-					wi_tds = math.exp(w_i)*math.exp(tds_value)
-					ni = "n" + str(_i)
-					csv += str(i) + "_" + word[channel_name]["str"] + ";"
-					csv += ni + ";" + str(wi_tds) + ";Directed\n"
+				#print(np.transpose(dense_weights[0]).shape)
+				#np.transpose(dense_weights[1])
 
+				#weights0 = [dense_weights[0][i][x:x + config["EMBEDDING_DIM"]] for x in range(0, len(dense_weights[0][i]), config["EMBEDDING_DIM"])]
+				#print(dense_weights[0][i])
 
-					for _j, w_j in enumerate(dense_weights[1][_i]): # 100/2
-						#if tds_value == 0: continue
-						print("wi_tds:", str(wi_tds))
-						wj_tds = math.exp(w_j)*wi_tds
-						csv += ni + ";"
-						csv += config["CLASSES"][_j] + ";" + str(wj_tds) + ";Directed\n"
+				
+				for _i, hidden_layer in enumerate(np.transpose(dense_weights[0])):
+					
+					from_i = config["EMBEDDING_DIM"]*i
+					to_j = from_i+config["EMBEDDING_DIM"]
+					
+					if word[channel_name]["str"] == "advienne":
+						print(word[channel_name]["str"], i, " embedding from", from_i, "to", to_j)
+
+					weighted_tds = 0
+					sum_tds = 0
+					for j, w1 in enumerate(hidden_layer[from_i:to_j]):
+						if tds[channel][sentence_nb][i][j] > 0:
+							weighted_tds += tds[channel][sentence_nb][i][j]*w1
+					weighted_tds = weighted_tds
+
+					n0 = str(i) + "_" + word[channel_name]["str"]
+					n1 = str(_i)
+					csv += n0 + ";" + n1 + ";" + str(weighted_tds) + ";Directed\n"
+					#if word[channel_name]["str"] == "advienne":
+					#	print(n0 + ";" + n1 + ";" + str(weighted_tds) + ";Directed")
+
+					for _j, w2 in enumerate(dense_weights[1][_i]): 
+						if weighted_tds > 0:
+							weighted_tds = weighted_tds*w2
+						else:
+							weighted_tds = 0
+						csv += n1 + ";" + config["CLASSES"][_j] + ";" + str(weighted_tds) + ";Directed\n"
+						if word[channel_name]["str"] == "concitoyens":
+							if weighted_tds > 0:
+								total[config["CLASSES"][_j]] = total.get(config["CLASSES"][_j], 0) + weighted_tds
 
 				csv2 += str(i) + "_" + word[channel_name]["str"] + ";" + "input\n"
 
@@ -455,8 +481,10 @@ def predict(text_file, model_file, config, vectors_file):
 			word_nb += 1
 			
 		#print(json.dumps(pca_array))
-
-		for _i in range(len(dense_weights[0][0])):
+		
+		print(total)
+		
+		for _i in range(len(np.transpose(dense_weights[0]))):
 			csv2 += "n" + str(_i) + ";" + "hidden\n"
 		for _j in range(len(dense_weights[1][0])):
 			csv2 += config["CLASSES"][_j] + ";" + "output\n"
