@@ -8,7 +8,7 @@ from keras.utils import plot_model
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation, MaxPooling1D, Dense, Lambda, Flatten
+from keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
 from keras.models import Model
 
 from classifier.cnn import models
@@ -300,32 +300,26 @@ def predict(text_file, model_file, config, vectors_file):
 
 	print("----------------------------")
 	print("DECONVOLUTION")
-	print("----------------------------")
-	# GET THE CONVOLUTIONAL LAYERS
-	isConvLayer = False
-	last_conv_layer = []
-	last_attention_layer = 0
-	
-	dense_weights = []
-	
+	print("----------------------------")	
+	# GET LAYER INDICES and weights
 	i = 0
+	conv_layers = []
+	attention_layer = []
+	dense_weights = []
 	for layer in classifier.layers:	
 		print(type(layer), i)
-
-		if type(layer) is Dense:
+		# CONVOLUTION (AND DECONVOLUTION)
+		if type(layer) is Conv1D:
+			conv_layers += [i+1]
+		# ATTENTION
+		elif type(layer) is TimeDistributed:
+			attention_layer = i+1
+		# DENSE WEIGHTS
+		elif type(layer) is Dense:
 			dense_weights += [layer.get_weights()[0]]
-		
-		elif type(layer) is Conv1D:
-			last_conv_layer += [i+1]
-		
-		elif type(layer) is Activation and last_attention_layer == 0:
-			last_attention_layer = i+1
-
-		elif type(layer) is Flatten:
-			print("FLATTEN WEIGHT:", layer.get_weights())
-
 		i += 1
 
+	"""
 	# FLATTEN LAYER
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-3]] 
 	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
@@ -343,8 +337,9 @@ def predict(text_file, model_file, config, vectors_file):
 	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	last_model.summary()
 	last = last_model.predict(x_data)[-1]
-	
-	# TDS
+	"""
+
+	# TDS LAYERS
 	if config["ENABLE_CONV"]:
 
 		# DECONV BY CONV2DTRANSPOSE
@@ -352,40 +347,41 @@ def predict(text_file, model_file, config, vectors_file):
 			tds = []
 			for channel in range(preprocessing.nb_channels):
 				deconv_model = load_model(model_file + ".deconv" + str(channel))
+				print("DECONVOLUTION summary:")
+				deconv_model.summary()
 				tds += [deconv_model.predict(x_data[channel])]
-			print("DECONV BY CONV2DTRANSPOSE")
+		
+		# DECONV BY READING FILTERS
 		except:
-			# DECONV BY READING FILTERS
-			#last_conv_layer = last_conv_layer[2]
-			#last_conv_layer = last_conv_layer[5]
-			#last_conv_layer = last_conv_layer[8]
-			last_conv_layer = last_conv_layer[-1]
-
-			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
+			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):conv_layers[-1]]] 
 			deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+			print("DECONVOLUTION summary:")
 			deconv_model.summary()
-			#plot_model(classifier, to_file='model.png')
-			print("DECONV BY READING FILTERS")
 			tds = deconv_model.predict(x_data)#[-1]
-			
-			"""
-			maxpool = []
-			for e in tds[-1][0]:
-				maxpool += [e.tolist()]
-			print(json.dumps(maxpool))
-			"""
 	else:
 		tds = False
 
-	# ATTENTION
+	# ATTENTION LAYER
 	if config["ENABLE_LSTM"]:
-		layer_outputs2 = [layer.output for layer in classifier.layers[len(x_data):last_attention_layer]] 
-		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs2)
+		layer_outputs = [layer.output for layer in classifier.layers[len(x_data):attention_layer]] 
+		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 		print("ATTENTION summary:")
 		attention_model.summary()
-		attention = attention_model.predict(x_data)
+		attention = attention_model.predict(x_data)[-1]
 	else:
 		attention = False
+
+	# DENSE LAYER 1
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-2]]
+	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	dense_model.summary()
+	dense1 = dense_model.predict(x_data)[-1]
+
+	# DENSE LAYER 1
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
+	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	dense_model.summary()
+	dense2 = dense_model.predict(x_data)[-1]
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
@@ -398,17 +394,20 @@ def predict(text_file, model_file, config, vectors_file):
 		print(sentence_nb , "/" , len(x_data[0]))
 		sentence = {}
 		sentence["sentence"] = []
-		sentence["prediction"] = last[sentence_nb].tolist()
+		sentence["prediction"] = dense2[sentence_nb].tolist()
+		prediction_index = sentence["prediction"].index(max(sentence["prediction"]))
 
 		total = {}
 
 		# READ SENTENCE WORD BY WORD
 		pca_array = []
+		
+		
 		for i in range(len(x_data[0][sentence_nb])):
 			#print(i , "/" , len(tds[-1][sentence_nb]))
 
 			try:
-				attention_value = attention[-1][sentence_nb][i]						# ATTENTION
+				attention_value = attention[sentence_nb][i]
 			except:
 				attention_value = 0
 			
@@ -420,12 +419,26 @@ def predict(text_file, model_file, config, vectors_file):
 				if not tds:
 					tds_value = 0
 				else:
-					try:
-						# DECONV BY READING FILTERS)
-						tds_value = sum(tds[-(channel+1)][sentence_nb][i])[0]
-					except:
-						# DECONV BY CONV2DTRANSPOSE
-						tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+					# DECONV BY READING FILTERS)
+
+					# OLD TDS
+					#tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+
+					# NEW TDS
+					from_i = i*config["EMBEDDING_DIM"]
+					to_j = from_i + config["EMBEDDING_DIM"]
+					activations = [0]*config["DENSE_LAYER_SIZE"]
+					tds_value = 0
+					for _i in range(from_i, to_j):
+						for _j, weight in enumerate(dense_weights[0][_i]):
+							x = int(_i/config["EMBEDDING_DIM"])
+							y = _i%config["EMBEDDING_DIM"]
+							activations[_j] += tds[-(channel+1)][sentence_nb][x][y]*weight
+							#print(_i,_j,x,y,activations[_j])
+					
+					for _i, activation in enumerate(activations):
+						if activation > 0:
+							tds_value += activation*dense_weights[1][_i][prediction_index]
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
@@ -493,6 +506,7 @@ def predict(text_file, model_file, config, vectors_file):
 			sentence["sentence"] += [word]	
 			word_nb += 1
 		
+		"""
 		for _i in range(len(np.transpose(dense_weights[0]))):
 			csv2 += "n" + str(_i) + ";" + "hidden\n"
 		for _j in range(len(dense_weights[1][0])):
@@ -505,7 +519,6 @@ def predict(text_file, model_file, config, vectors_file):
 		# LAYER[-2] ACTIVATION CALCULATION
 		total = {}
 		print("tds:", tds[-1].shape)
-		print("flatten:", flatten[0])
 		for _i, hidden_links in enumerate(dense_weights[0]):
 			for _j, weight in enumerate(dense_weights[0][_i]):
 				x = int(_i/config["EMBEDDING_DIM"])
@@ -524,14 +537,14 @@ def predict(text_file, model_file, config, vectors_file):
 
 		print("-"*20)
 		print("ACTIVATIONS THEORIQUES:", activations)
-		print("ACTIVATIONS OBSERVÉES:", last_0[0].tolist())
+		print("ACTIVATIONS OBSERVÉES:", dense1[0].tolist())
 		print("-"*20)
 
 		# LAYER[-1] LAYER ACTIVATION CALCULATION
 		total = {}
 		for _i, hidden_links in enumerate(dense_weights[1]):
 			for _j, weight in enumerate(dense_weights[1][_i]):
-				activation = list(last_0[0])[_i]*weight
+				activation = activations[_i]*weight
 				total[config["CLASSES"][_j]] = total.get(config["CLASSES"][_j], 0) + activation
 
 		activations = []
@@ -541,8 +554,9 @@ def predict(text_file, model_file, config, vectors_file):
 
 		print("-"*20)
 		print("ACTIVATIONS THEORIQUES:", activations)
-		print("ACTIVATIONS OBSERVÉES:", last[0].tolist())
+		print("ACTIVATIONS OBSERVÉES:", dense2[0].tolist())
 		print("-"*20)
+		"""
 
 		result.append(sentence)
 
