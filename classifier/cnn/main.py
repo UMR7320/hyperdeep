@@ -8,7 +8,7 @@ from keras.utils import plot_model
 from keras.utils import np_utils
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation, MaxPooling1D, Dense, Lambda
+from keras.layers import Conv1D, Conv2D, Conv2DTranspose, Activation, MaxPooling1D, Dense, Lambda, Flatten
 from keras.models import Model
 
 from classifier.cnn import models
@@ -321,10 +321,25 @@ def predict(text_file, model_file, config, vectors_file):
 		elif type(layer) is Activation and last_attention_layer == 0:
 			last_attention_layer = i+1
 
+		elif type(layer) is Flatten:
+			print("FLATTEN WEIGHT:", layer.get_weights())
+
 		i += 1
 
+	# FLATTEN LAYER
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-3]] 
+	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	last_model.summary()
+	flatten = last_model.predict(x_data)[-1]
+
 	# LAST LAYER
-	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]] 
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-2]] 
+	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	last_model.summary()
+	last_0 = last_model.predict(x_data)[-1]
+
+	# LAST LAYER
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
 	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	last_model.summary()
 	last = last_model.predict(x_data)[-1]
@@ -344,9 +359,6 @@ def predict(text_file, model_file, config, vectors_file):
 			#last_conv_layer = last_conv_layer[2]
 			#last_conv_layer = last_conv_layer[5]
 			#last_conv_layer = last_conv_layer[8]
-
-			print("last_conv_layer:", last_conv_layer)
-			
 			last_conv_layer = last_conv_layer[-1]
 
 			layer_outputs = [layer.output for layer in classifier.layers[len(x_data):last_conv_layer]] 
@@ -354,7 +366,7 @@ def predict(text_file, model_file, config, vectors_file):
 			deconv_model.summary()
 			#plot_model(classifier, to_file='model.png')
 			print("DECONV BY READING FILTERS")
-			tds = deconv_model.predict(x_data)
+			tds = deconv_model.predict(x_data)#[-1]
 			
 			"""
 			maxpool = []
@@ -405,17 +417,15 @@ def predict(text_file, model_file, config, vectors_file):
 			for channel in range(preprocessing.nb_channels):
 				#print(channel , "/" , len(tds))
 
-				if tds:
+				if not tds:
+					tds_value = 0
+				else:
 					try:
 						# DECONV BY READING FILTERS)
-						#tds_value = tds[-1][sentence_nb][i]
-						tds_value = sum(tds[channel][sentence_nb][i])[0]
-						#print(tds_value)
+						tds_value = sum(tds[-(channel+1)][sentence_nb][i])[0]
 					except:
 						# DECONV BY CONV2DTRANSPOSE
 						tds_value = sum(tds[-(channel+1)][sentence_nb][i])
-				else:
-					tds_value = 0
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
@@ -442,47 +452,46 @@ def predict(text_file, model_file, config, vectors_file):
 				#weights0 = [dense_weights[0][i][x:x + config["EMBEDDING_DIM"]] for x in range(0, len(dense_weights[0][i]), config["EMBEDDING_DIM"])]
 				#print(dense_weights[0][i])
 
-				
+				"""
 				for _i, hidden_layer in enumerate(np.transpose(dense_weights[0])):
 					
 					from_i = config["EMBEDDING_DIM"]*i
 					to_j = from_i+config["EMBEDDING_DIM"]
 					
-					if word[channel_name]["str"] == "advienne":
-						print(word[channel_name]["str"], i, " embedding from", from_i, "to", to_j)
+					#if word[channel_name]["str"] == "advienne":
+					#	print(word[channel_name]["str"], i, " embedding from", from_i, "to", to_j)
 
 					weighted_tds = 0
 					sum_tds = 0
 					for j, w1 in enumerate(hidden_layer[from_i:to_j]):
-						if tds[channel][sentence_nb][i][j] > 0:
-							weighted_tds += tds[channel][sentence_nb][i][j]*w1
-					weighted_tds = weighted_tds
+						#if word[channel_name]["str"] == "profondément":
+						#	print(len(tds[channel][sentence_nb][i]))
+						weighted_tds += tds[channel][sentence_nb][i][j]*w1
+					if weighted_tds <= 0:
+						weighted_tds = 0
 
 					n0 = str(i) + "_" + word[channel_name]["str"]
 					n1 = str(_i)
 					csv += n0 + ";" + n1 + ";" + str(weighted_tds) + ";Directed\n"
-					#if word[channel_name]["str"] == "advienne":
-					#	print(n0 + ";" + n1 + ";" + str(weighted_tds) + ";Directed")
+					
+					#if word[channel_name]["str"] == "profondément":
+					#	print(from_i, to_j, weighted_tds)
 
+					#print("BEFORE:", weighted_tds)
 					for _j, w2 in enumerate(dense_weights[1][_i]): 
-						if weighted_tds > 0:
-							weighted_tds = weighted_tds*w2
-						else:
-							weighted_tds = 0
+						weighted_tds = weighted_tds*w2
+						#print("AFTER:", weighted_tds)
 						csv += n1 + ";" + config["CLASSES"][_j] + ";" + str(weighted_tds) + ";Directed\n"
-						if word[channel_name]["str"] == "concitoyens":
-							if weighted_tds > 0:
-								total[config["CLASSES"][_j]] = total.get(config["CLASSES"][_j], 0) + weighted_tds
+						
+						total[config["CLASSES"][_j]] = total.get(config["CLASSES"][_j], {})
+						total[config["CLASSES"][_j]][word[channel_name]["str"]] = total[config["CLASSES"][_j]].get(word[channel_name]["str"], 0) + weighted_tds
+						total[config["CLASSES"][_j]]["TOTAL"] = total[config["CLASSES"][_j]].get("TOTAL", 0) + weighted_tds
 
 				csv2 += str(i) + "_" + word[channel_name]["str"] + ";" + "input\n"
+				"""
 
 			sentence["sentence"] += [word]	
-
 			word_nb += 1
-			
-		#print(json.dumps(pca_array))
-		
-		print(total)
 		
 		for _i in range(len(np.transpose(dense_weights[0]))):
 			csv2 += "n" + str(_i) + ";" + "hidden\n"
@@ -492,6 +501,48 @@ def predict(text_file, model_file, config, vectors_file):
 		csv_out.write(csv)
 		csv_out = open("nodes.csv", "w")
 		csv_out.write(csv2)
+
+		# LAYER[-2] ACTIVATION CALCULATION
+		total = {}
+		print("tds:", tds[-1].shape)
+		print("flatten:", flatten[0])
+		for _i, hidden_links in enumerate(dense_weights[0]):
+			for _j, weight in enumerate(dense_weights[0][_i]):
+				x = int(_i/config["EMBEDDING_DIM"])
+				y = _i%config["EMBEDDING_DIM"]
+				channel = -1
+				sentence_nb = 0
+				activation = tds[-1][0][x][y]*weight
+				total[_j] = total.get(_j, 0) + activation
+
+		activations = []
+		for classe, value in total.items():
+			if value > 0:
+				activations += [value]
+			else:
+				activations += [0.0]
+
+		print("-"*20)
+		print("ACTIVATIONS THEORIQUES:", activations)
+		print("ACTIVATIONS OBSERVÉES:", last_0[0].tolist())
+		print("-"*20)
+
+		# LAYER[-1] LAYER ACTIVATION CALCULATION
+		total = {}
+		for _i, hidden_links in enumerate(dense_weights[1]):
+			for _j, weight in enumerate(dense_weights[1][_i]):
+				activation = list(last_0[0])[_i]*weight
+				total[config["CLASSES"][_j]] = total.get(config["CLASSES"][_j], 0) + activation
+
+		activations = []
+		for classe, value in total.items():
+			activations += [value]
+
+
+		print("-"*20)
+		print("ACTIVATIONS THEORIQUES:", activations)
+		print("ACTIVATIONS OBSERVÉES:", last[0].tolist())
+		print("-"*20)
 
 		result.append(sentence)
 

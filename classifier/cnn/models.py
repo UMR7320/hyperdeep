@@ -161,13 +161,13 @@ class CNNModel:
 			flat = Flatten()(merged)
 			#flat = merged
 			
-		dropout = Dropout(config["DROPOUT_VAL"])(flat)
+		#dropout = Dropout(config["DROPOUT_VAL"])(flat)
 		#print("Dropout :", dropout.shape)
 
 		# ------------------
 		# HIDDEN DENSE LAYER
 		# ------------------	
-		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform',activation='relu')(dropout)
+		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform', activation='relu')(flat)
 		#hidden_dense = Activation('relu')(dropout)
 
 		# -----------------
@@ -176,7 +176,7 @@ class CNNModel:
 		crossentropy = 'categorical_crossentropy'
 		output_acivation = 'softmax'
 
-		output = Dense(config["num_classes"],kernel_regularizer=regularizers.l1(0.05))(hidden_dense)
+		output = Dense(config["num_classes"])(hidden_dense) #, kernel_regularizer=regularizers.l1(0.05)
 		output = Activation(output_acivation)(output)
 
 		print("output :", output.shape)
