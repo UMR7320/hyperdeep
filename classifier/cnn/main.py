@@ -427,6 +427,7 @@ def predict(text_file, model_file, config, vectors_file):
 					# NEW TDS
 					from_i = i*config["EMBEDDING_DIM"]
 					to_j = from_i + config["EMBEDDING_DIM"]
+					"""
 					activations = [0]*config["DENSE_LAYER_SIZE"]
 					tds_value = 0
 					for _i in range(from_i, to_j):
@@ -439,6 +440,15 @@ def predict(text_file, model_file, config, vectors_file):
 					for _i, activation in enumerate(activations):
 						if activation > 0:
 							tds_value += activation*dense_weights[1][_i][prediction_index]
+					"""
+					tds1 = tds[-(channel+1)][sentence_nb][i]
+					weight1 = dense_weights[0][from_i:to_j,:]
+					vec = np.dot(tds1, weight1)
+					vec2 = vec * (vec>0) # RELU
+
+					weight2 = dense_weights[1]
+					tds_value = np.dot(vec2, weight2)[prediction_index]
+
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
