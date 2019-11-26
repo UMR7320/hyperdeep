@@ -291,6 +291,7 @@ def predict(text_file, model_file, config, vectors_file):
 			for idx in data:
 				lime_text += dictionaries[0]["index_word"][idx] + " "
 			lime_text = lime_text[:-1]
+			print(lime_text)
 			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
 			predicted_label = list(predictions[i]).index(max(predictions[i]))
 			#print(predictions[i], predicted_label)
@@ -463,7 +464,10 @@ def predict(text_file, model_file, config, vectors_file):
 				word[channel_name]["tds"] = str(tds_value)
 				word[channel_name]["attention"] = str(attention_value)
 				if config["ENABLE_LIME"]:
-					word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
+					try:
+						word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
+					except:
+						word[channel_name]["lime"] = lime[sentence_nb]["UK"]
 				
 				#pca = {}
 				#pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
