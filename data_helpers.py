@@ -24,7 +24,10 @@ def tokenize(texts, model_file, create_dictionnary, config):
 	text_formes = texts[0]
 	if config["TG"]:
 		text_codes = texts[1]
-		config["FILTERS"] = config["FILTERS"].split()
+		try:
+			config["FILTERS"] = config["FILTERS"].split()
+		except:
+			pass
 	else:
 		text_codes = False
 
