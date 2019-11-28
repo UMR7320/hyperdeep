@@ -426,7 +426,7 @@ def predict(text_file, model_file, config, vectors_file):
 					#tds_value = sum(tds[-(channel+1)][sentence_nb][i])
 
 					# NEW TDS
-					from_i = i*config["EMBEDDING_DIM"]
+					from_i = (i*config["EMBEDDING_DIM"]) + (channel*config["EMBEDDING_DIM"]*config["SEQUENCE_SIZE"])
 					to_j = from_i + config["EMBEDDING_DIM"]
 					"""
 					activations = [0]*config["DENSE_LAYER_SIZE"]
@@ -442,6 +442,7 @@ def predict(text_file, model_file, config, vectors_file):
 						if activation > 0:
 							tds_value += activation*dense_weights[1][_i][prediction_index]
 					"""
+
 					tds1 = tds[-(channel+1)][sentence_nb][i]
 					weight1 = dense_weights[0][from_i:to_j,:]
 					vec = np.dot(tds1, weight1)
