@@ -22,6 +22,11 @@ def tokenize(texts, model_file, create_dictionnary, config):
 
 	type = ["FORME", "CODE", "LEM"]
 	text_formes = texts[0]
+	if config["TG"]:
+		text_codes = texts[1]
+		config["FILTERS"] = config["FILTERS"].split()
+	else:
+		text_codes = False
 
 	for channel, text in texts.items():
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
@@ -31,6 +36,10 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			words = line.split()[:config["SEQUENCE_SIZE"]]
 			
 			words_formes = text_formes[i].split()[:config["SEQUENCE_SIZE"]]
+			try:
+				words_codes =  text_codes[i].split()[:config["SEQUENCE_SIZE"]]
+			except:
+				words_codes = False
 
 			sentence_length = len(words)
 			sentence = []
@@ -41,7 +50,10 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						# FILTERS
 						# not a number and len > 1
 						skip_word = word.isdigit() or len(word) == 1
-						skip_word = skip_word or (word[1] in ["NP", "NAM"] and channel != 1)
+						try:
+							skip_word = skip_word or (words_codes[j] in config["FILTERS"] and channel != 1)
+						except:
+							pass
 
 						if not skip_word: # f > k+2%
 							for spec in config["Z_SCORE"].values():
