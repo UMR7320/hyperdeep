@@ -291,11 +291,12 @@ def predict(text_file, model_file, config, vectors_file):
 			for idx in data:
 				lime_text += dictionaries[0]["index_word"][idx] + " "
 			lime_text = lime_text[:-1]
-			print(lime_text)
 			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
 			predicted_label = list(predictions[i]).index(max(predictions[i]))
 			#print(predictions[i], predicted_label)
 			lime += [dict(exp.as_list(label=predicted_label))]
+			#lime_html = open("lime.html", "w")
+			#lime_html.write(exp.as_html())
 			#print(exp.available_labels())
 			#print ('\n'.join(map(str, exp.as_list(label=4))))
 
@@ -307,6 +308,7 @@ def predict(text_file, model_file, config, vectors_file):
 	conv_layers = []
 	attention_layer = []
 	dense_weights = []
+	dense_bias = []
 	for layer in classifier.layers:	
 		print(type(layer), i)
 		# CONVOLUTION (AND DECONVOLUTION)
@@ -318,6 +320,7 @@ def predict(text_file, model_file, config, vectors_file):
 		# DENSE WEIGHTS
 		elif type(layer) is Dense:
 			dense_weights += [layer.get_weights()[0]]
+			dense_bias += [layer.get_weights()[1]]
 		i += 1
 
 	"""
@@ -426,7 +429,7 @@ def predict(text_file, model_file, config, vectors_file):
 					#tds_value = sum(tds[-(channel+1)][sentence_nb][i])
 
 					# NEW TDS
-					from_i = (i*config["EMBEDDING_DIM"]) + (channel*config["EMBEDDING_DIM"]*config["SEQUENCE_SIZE"])
+					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
 					to_j = from_i + config["EMBEDDING_DIM"]
 					"""
 					activations = [0]*config["DENSE_LAYER_SIZE"]
@@ -442,14 +445,14 @@ def predict(text_file, model_file, config, vectors_file):
 						if activation > 0:
 							tds_value += activation*dense_weights[1][_i][prediction_index]
 					"""
-
 					tds1 = tds[-(channel+1)][sentence_nb][i]
 					weight1 = dense_weights[0][from_i:to_j,:]
-					vec = np.dot(tds1, weight1)
+					vec = np.dot(tds1, weight1) + dense_bias[0]
 					vec2 = vec * (vec>0) # RELU
 
 					weight2 = dense_weights[1]
-					tds_value = np.dot(vec2, weight2)[prediction_index]
+					tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
+					tds_value *= 100
 
 
 				# FILL THE WORD VALUES
@@ -469,6 +472,8 @@ def predict(text_file, model_file, config, vectors_file):
 						word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
 					except:
 						word[channel_name]["lime"] = lime[sentence_nb]["UK"]
+				
+				print(word[channel_name]["str"], channel, sentence_nb, i, from_i, to_j)
 				
 				#pca = {}
 				#pca[dictionaries[channel]["index_word"][index]] = tds[-(channel+1)][sentence_nb][i].tolist()
