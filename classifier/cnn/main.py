@@ -191,6 +191,7 @@ def train(corpus_file, model_file, config):
 	
 	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
+	"""
 	# ------------------------------------
 	# GET EMBEDDING MODEL
 	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
@@ -243,6 +244,7 @@ def train(corpus_file, model_file, config):
 		f.flush()
 		f.close()
 	# ------------------------------------
+	"""
 
 	# get score
 	model = load_model(model_file)
