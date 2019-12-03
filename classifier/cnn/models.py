@@ -105,7 +105,7 @@ class CNNModel:
 		# ------------------------------------
 		if config["ENABLE_CONV"]:
 			if config["TG"]:
-				merged = concatenate(conv)
+				merged = concatenate([conv[0],conv[1],conv[2]])
 			else:
 				merged = conv[0]
 		else:

@@ -324,7 +324,7 @@ def predict(text_file, model_file, config, vectors_file):
 		i += 1
 
 	# FLATTEN LAYER
-	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-3]] 
+	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-4]] 
 	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	last_model.summary()
 	flatten = last_model.predict(x_data)[-1]
@@ -443,11 +443,11 @@ def predict(text_file, model_file, config, vectors_file):
 							tds_value += activation*dense_weights[1][_i][prediction_index]
 					"""
 					# NEW TDS
-					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
+					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + ((2-channel)*config["EMBEDDING_DIM"])
 					to_j = from_i + config["EMBEDDING_DIM"]
-					
-					#tds1 = tds[-(channel+1)][sentence_nb][i]
-					tds1 = flatten[sentence_nb][from_i:to_j]
+
+					tds1 = tds[-(channel+1)][sentence_nb][i]
+					#tds1 = flatten[sentence_nb][from_i:to_j]
 					weight1 = dense_weights[0][from_i:to_j,:]
 					vec = np.dot(tds1, weight1) + dense_bias[0]
 					vec2 = vec * (vec>0) # RELU
