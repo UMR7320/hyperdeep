@@ -446,7 +446,7 @@ def predict(text_file, model_file, config, vectors_file):
 					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
 					to_j = from_i + config["EMBEDDING_DIM"]
 
-					tds1 = tds[-(3-channel)][sentence_nb][i]
+					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 
 					#tds1 = flatten[sentence_nb][from_i:to_j]
 					weight1 = dense_weights[0][from_i:to_j,:]
