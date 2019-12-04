@@ -446,10 +446,10 @@ def predict(text_file, model_file, config, vectors_file):
 					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
 					to_j = from_i + config["EMBEDDING_DIM"]
 
-					print(-(3-channel), from_i, to_j)
-					#tds1 = tds[-(3-channel)][sentence_nb][i]
+					#print(-(3-channel), from_i, to_j)
+					tds1 = tds[-(3-channel)][sentence_nb][i]
 
-					tds1 = flatten[sentence_nb][from_i:to_j]
+					#tds1 = flatten[sentence_nb][from_i:to_j]
 					weight1 = dense_weights[0][from_i:to_j,:]
 					vec = np.dot(tds1, weight1) + dense_bias[0]
 					vec2 = vec * (vec>0) # RELU
