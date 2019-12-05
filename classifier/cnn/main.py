@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 import random
 import numpy as np
 import time
@@ -189,7 +191,31 @@ def train(corpus_file, model_file, config):
 	checkpoint = ModelCheckpoint(model_file, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 	callbacks_list = [checkpoint]
 	
-	model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
+	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
+
+	"""	
+	plt.plot(history.history['acc'])
+	plt.plot(history.history['val_acc'])
+	plt.title('Model accuracy')
+	plt.ylabel('Accuracy')
+	plt.xlabel('Epoch')
+	plt.legend(['Train', 'Test'], loc='upper left')
+	#plt.show()
+	plt.savefig('accuracy.png')
+	"""
+
+	# Plot training & validation loss values
+	plt.plot(history.history['loss'])
+	plt.plot(history.history['acc'])
+	plt.plot(history.history['val_loss'])
+	plt.plot(history.history['val_acc'])
+	plt.title('Model loss and accuracy')
+	plt.ylabel('Loss/Accuracy')
+	plt.xlabel('Epoch')
+	plt.legend(['train_loss', 'train_acc', 'val_loss', 'val_acc'], loc='upper right')
+	#plt.show()
+	plt.savefig('history.png')
+
 
 	"""
 	# ------------------------------------
@@ -271,8 +297,10 @@ def predict(text_file, model_file, config, vectors_file):
 	print("----------------------------")
 	classifier = load_model(model_file)
 
+	# Plot training & validation accuracy values ---- 
 	plot_model(classifier,show_shapes=False, to_file='model.dot')
 	plot_model(classifier, to_file='model.png')
+	# -----------------------------------------------
 	
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
