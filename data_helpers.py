@@ -84,7 +84,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						except:
 							dictionaries[channel]["word_index"][word] = dictionaries[channel]["word_index"]["PAD"]
 				sentence.append(dictionaries[channel]["word_index"][word])
-				if dictionaries[channel]["word_index"][word] not in ["UK", "PAD"]:
+				if channel == 0 and dictionaries[channel]["word_index"][word] not in ["UK", "PAD"]:
 					occ_size += 1
 
 			# COMPLETE WITH PAD IF LENGTH IS < SEQUENCE_SIZE
