@@ -95,6 +95,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 		with open(model_file + ".index", 'wb') as handle:
 			pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-	print("VOCABULARY SIZE:", dictionaries[0]["index_word"])
+	print("VOCABULARY SIZE:", len(dictionaries[0]["index_word"]))
 
 	return dictionaries, datas
