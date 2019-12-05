@@ -31,6 +31,8 @@ def tokenize(texts, model_file, create_dictionnary, config):
 	else:
 		text_codes = False
 
+	skip_counter = 0
+
 	for channel, text in texts.items():
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
 
@@ -69,6 +71,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 									pass
 						# IF WORD IS SKIPED THEN ADD "UK" word
 						if skip_word: 
+							skip_counter += 1
 							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["UK"]
 						else:	 
 							indexes[channel] += 1
@@ -96,5 +99,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	print("VOCABULARY SIZE:", indexes[0])
+	print("SKIP SIZE:", skip_counter)
 
 	return dictionaries, datas
