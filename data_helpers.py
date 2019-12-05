@@ -31,6 +31,8 @@ def tokenize(texts, model_file, create_dictionnary, config):
 	else:
 		text_codes = False
 
+	occ_size = 0
+
 	for channel, text in texts.items():
 		datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
 
@@ -62,7 +64,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 							for spec in config["Z_SCORE"].values():
 								try:
 									test_k = spec[type[channel]][word]["k"] + (spec[type[channel]][word]["k"]*0.1)
-									if spec[type[channel]][word]["f"] < test_k or spec[type[channel]][word]["f"] < 10:
+									if spec[type[channel]][word]["f"] < test_k:# or spec[type[channel]][word]["f"] < 10:
 										skip_word = True
 										break
 								except :
@@ -82,6 +84,8 @@ def tokenize(texts, model_file, create_dictionnary, config):
 						except:
 							dictionaries[channel]["word_index"][word] = dictionaries[channel]["word_index"]["PAD"]
 				sentence.append(dictionaries[channel]["word_index"][word])
+				if dictionaries[channel]["word_index"][word] not in ["UK", "PAD"]:
+					occ_size += 1
 
 			# COMPLETE WITH PAD IF LENGTH IS < SEQUENCE_SIZE
 			if sentence_length < config["SEQUENCE_SIZE"]:
@@ -96,5 +100,6 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	print("VOCABULARY SIZE:", len(dictionaries[0]["index_word"]))
+	print("OCCURRENCE SIZE:", occ_size)
 
 	return dictionaries, datas
