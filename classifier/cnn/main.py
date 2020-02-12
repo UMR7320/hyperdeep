@@ -483,9 +483,10 @@ def predict(text_file, model_file, config, vectors_file):
 					vec2 = vec * (vec>0) # RELU
 
 					weight2 = dense_weights[1]
-					tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
+					#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
+					#tds_value *= 100
+					tds_value = np.dot(vec2, weight2) + dense_bias[1]
 					tds_value *= 100
-
 
 				# FILL THE WORD VALUES
 				channel_name = "channel" + str(channel)
@@ -497,7 +498,7 @@ def predict(text_file, model_file, config, vectors_file):
 				word[channel_name]["str"] = dictionaries[channel]["index_word"][index]
 				if word[channel_name]["str"] == "UK":
 					word[channel_name]["str"] = raw_text[word_nb].split("**")[channel]
-				word[channel_name]["tds"] = str(tds_value)
+				word[channel_name]["tds"] = tds_value.tolist()
 				word[channel_name]["attention"] = str(attention_value)
 				if config["ENABLE_LIME"]:
 					try:
