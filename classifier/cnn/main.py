@@ -471,20 +471,27 @@ def predict(text_file, model_file, config, vectors_file):
 							tds_value += activation*dense_weights[1][_i][prediction_index]
 					"""
 					# NEW TDS
-					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
-					to_j = from_i + config["EMBEDDING_DIM"]
-
-					#print(-(3-channel), from_i, to_j)
 					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 
-					#tds1 = flatten[sentence_nb][from_i:to_j]
+					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
+					to_j = from_i + config["EMBEDDING_DIM"]
 					weight1 = dense_weights[0][from_i:to_j,:]
 					vec = np.dot(tds1, weight1) + dense_bias[0]
+
+					"""
+					from_i = channel*config["EMBEDDING_DIM"]
+					vec = np.zeros(len(dense_bias[0]))
+					while from_i < (len(x_data[0][sentence_nb])*config["EMBEDDING_DIM"]*preprocessing.nb_channels) - config["EMBEDDING_DIM"]:
+						to_j = from_i + config["EMBEDDING_DIM"]
+						weight1 = dense_weights[0][from_i:to_j,:]
+						vec += np.dot(tds1, weight1) + dense_bias[0]
+						from_i += (config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
+					"""
+
 					vec2 = vec * (vec>0) # RELU
 
 					weight2 = dense_weights[1]
 					#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
-					#tds_value *= 100
 					tds_value = np.dot(vec2, weight2) + dense_bias[1]
 					tds_value *= 100
 
