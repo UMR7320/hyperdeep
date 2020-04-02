@@ -120,6 +120,8 @@ class PreProcessing:
 		self.nb_channels = len(texts.keys())
 
 	def loadEmbeddings(self, model_file, config, create_v = False):
+
+		print("LOADING WORD2VEC EMBEDDING")
 		
 		self.embedding_matrix = []
 
@@ -129,7 +131,7 @@ class PreProcessing:
 		for i in range(self.nb_channels):
 			my_dictionary = self.dictionaries[i]["word_index"]
 			embeddings_index = {}
-			vectors = open(model_file + ".vec" + str(i) ,'r')
+			vectors = open(model_file + ".word2vec" + str(i) ,'r')
 				
 			for line in vectors.readlines():
 				values = line.split()
@@ -193,17 +195,6 @@ def train(corpus_file, model_file, config):
 	
 	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
-	"""	
-	plt.plot(history.history['acc'])
-	plt.plot(history.history['val_acc'])
-	plt.title('Model accuracy')
-	plt.ylabel('Accuracy')
-	plt.xlabel('Epoch')
-	plt.legend(['Train', 'Test'], loc='upper left')
-	#plt.show()
-	plt.savefig('accuracy.png')
-	"""
-
 	# Plot training & validation loss values
 	plt.plot(history.history['loss'])
 	plt.plot(history.history['acc'])
@@ -214,24 +205,35 @@ def train(corpus_file, model_file, config):
 	plt.xlabel('Epoch')
 	plt.legend(['train_loss', 'train_acc', 'val_loss', 'val_acc'], loc='upper right')
 	#plt.show()
-	plt.savefig('history.png')
+	plt.savefig(model_file + ".png")
 
 
-	"""
 	# ------------------------------------
 	# GET EMBEDDING MODEL
+	print("-"*50)
+	print("EMBEDDING CALCULATION...")
 	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
 	embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
 	embedding_model.summary()
-	
+
+
 	# GET WORD EMBEDDINGS
 	x_data = []
-	for channel in range(len(preprocessing.x_train)):
-		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
-	embedding = embedding_model.predict(x_data)
+	for vocab_size in config["vocab_size"]:
+		x_entry = []
+		entry = []
+		for word_index in range(config["vocab_size"][0]):
+			if word_index%config["SEQUENCE_SIZE"] == 0 and word_index != 0:
+				x_entry.append(entry)
+				entry = []
+			entry += [word_index%vocab_size]
+
+		for word_index in range(config["SEQUENCE_SIZE"]-len(entry)):
+			entry += [0]
+		x_entry.append(entry)	
+		x_data += [np.array(x_entry)]
 	
-	# get dictionnaries
-	dictionaries = preprocessing.dictionaries
+	embedding = embedding_model.predict(x_data)
 	
 	# init embeddings
 	embeddings = {}
@@ -245,7 +247,7 @@ def train(corpus_file, model_file, config):
 			# READ EACH CHANNEL
 			for channel in range(len(x_data)):
 				index = x_data[channel][sentence_nb][i]
-				word = dictionaries[channel]["index_word"].get(index, "PAD")
+				word = preprocessing.dictionaries[channel]["index_word"].get(index, "PAD")
 
 				# MUTLI CHANNEL
 				if len(preprocessing.x_train) == len(embedding):
@@ -258,7 +260,7 @@ def train(corpus_file, model_file, config):
 				embeddings[channel][word] = wordvector
 
 	for channel in range(len(x_data)):
-		f = open(model_file + ".vec" + str(channel) ,'w')
+		f = open(model_file + ".finalvec" + str(channel) ,'w')
 		vectors = []
 		vector = '{} {}\n'.format(len(embeddings[channel].keys()), config["EMBEDDING_DIM"])
 		vectors.append(vector)
@@ -269,8 +271,8 @@ def train(corpus_file, model_file, config):
 			f.write(vector)
 		f.flush()
 		f.close()
+	print("DONE.")
 	# ------------------------------------
-	"""
 
 	# get score
 	model = load_model(model_file)

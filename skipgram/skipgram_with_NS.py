@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import gensim
+from gensim.models.fasttext import FastText
 import numpy as np
 
 from keras.layers import Embedding, Reshape, Activation, Input
@@ -13,14 +14,16 @@ from data_helpers import tokenize
 def create_vectors(corpus_file, model_file, config, nb_channels):
 
     for i in range(nb_channels):
+        print("Create vectors for channel", i+1)
 
         # GENSIM METHOD    				
         sentences = gensim.models.word2vec.LineSentence(corpus_file + "." + str(i))
 
         # sg defines the training algorithm. By default (sg=0), CBOW is used. Otherwise (sg=1), skip-gram is employed.
-        model = gensim.models.Word2Vec(sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, sg=config["SG"])
+        model = gensim.models.Word2Vec(sentences=sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], sg=config["SG"], workers=8)
+        #model = FastText(sentences=sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], workers=8, iter=1)
 
-        f = open(model_file + ".vec" + str(i)  ,'w')
+        f = open(model_file + ".word2vec" + str(i)  ,'w')
         vectors = []
         vector = '{} {}\n'.format(len(model.wv.index2word), config["EMBEDDING_DIM"])
         vectors.append(vector)
