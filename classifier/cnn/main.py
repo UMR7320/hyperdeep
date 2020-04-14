@@ -473,10 +473,10 @@ def predict(text_file, model_file, config, vectors_file):
 							tds_value += activation*dense_weights[1][_i][prediction_index]
 					"""
 					# NEW TDS
+					tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
 					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
-
-					from_i = (i*config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
-					to_j = from_i + config["EMBEDDING_DIM"]
+					from_i = (i*tds_size*preprocessing.nb_channels) + (channel*tds_size)
+					to_j = from_i + tds_size
 					weight1 = dense_weights[0][from_i:to_j,:]
 					vec = np.dot(tds1, weight1) + dense_bias[0]
 

@@ -10,6 +10,7 @@ import json
 
 from classifier.cnn.main import train, predict
 from skipgram.skipgram_with_NS import create_vectors, get_most_similar
+import tensorflow as tf
 
 # DISABLE GPU
 #os.environ['CUDA_VISIBLE_DEVICES'] = ''
@@ -99,6 +100,17 @@ if __name__ == '__main__':
                 config["Z_SCORE"] = json.loads(open(corpus_file + ".spec", "r").read())
             except:
                 config["Z_SCORE"] = {}
+
+            # defaut bach size
+            print("Bach size:",)
+            if not config["BACH_SIZE"]:
+                # Check if gpu is available
+                if tf.test.is_gpu_available():
+                    config["BACH_SIZE"] = 256
+                    print("(gpu is available)",)
+                else:
+                    config["BACH_SIZE"] = 64
+            print(config["BACH_SIZE"])
 
             # TRAIN
             scores = train(corpus_file, model_file, config)

@@ -49,8 +49,6 @@ class CNNModel:
 
 		inputs = [0]*nb_channels
 		embedding = [0]*nb_channels
-
-		config["FILTER_SIZES"] = config["FILTER_SIZES"].split("-")
 		
 		conv = [0]*nb_channels
 		pool = [0]*nb_channels
@@ -88,14 +86,14 @@ class CNNModel:
 					conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 					print("conv", i,  conv[i].shape)
 
-					conv[i] = MaxPooling1D(pool_size=2, strides=2, padding='same')(conv[i])
-					print("pool", i,  conv[i].shape)
+					#conv[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='same')(conv[i])
+					#print("pool", i,  conv[i].shape)
 					
 					last_layer = conv[i]
 
 				# DECONVOLUTION
-				conv[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(last_layer)
-				conv[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(conv[i])
+				#conv[i] = UpSampling1D(2**len(config["FILTER_SIZES"]))(last_layer)
+				#conv[i] = Conv1D(filters=config["EMBEDDING_DIM"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(conv[i])
 
 				# TDS 
 				#conv[i] = Lambda(lambda x: K.sum(x, axis=2))(conv[i])
@@ -161,14 +159,13 @@ class CNNModel:
 			flat = Flatten()(merged)
 			#flat = merged
 			
-		#dropout = Dropout(config["DROPOUT_VAL"])(flat)
+		dropout = Dropout(config["DROPOUT_VAL"])(flat)
 		#print("Dropout :", dropout.shape)
 
 		# ------------------
 		# HIDDEN DENSE LAYER
 		# ------------------	
-		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform', activation='relu')(flat)
-		#hidden_dense = Activation('relu')(dropout)
+		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform', activation='relu')(dropout)
 
 		# -----------------
 		# FINAL DENSE LAYER
