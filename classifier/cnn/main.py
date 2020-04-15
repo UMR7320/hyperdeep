@@ -94,9 +94,6 @@ class PreProcessing:
 		for i, dictionary in enumerate(dictionaries):
 			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
 
-		labels = np_utils.to_categorical(np.asarray(labels))
-		print('Shape of label tensor:', labels.shape)
-
 		# Size of validation sample
 		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
 
@@ -106,9 +103,13 @@ class PreProcessing:
 			np.random.shuffle(indices)
 
 		# split the data into a training set and a validation set		
-		labels = labels[indices]
-		self.y_train = labels[:-nb_validation_samples]
-		self.y_val = labels[-nb_validation_samples:]
+		if create_dictionnary:
+			labels = np_utils.to_categorical(np.asarray(labels))
+			print('Shape of label tensor:', labels.shape)
+			labels = labels[indices]
+			self.y_train = labels[:-nb_validation_samples]
+			self.y_val = labels[-nb_validation_samples:]
+
 		self.x_train = []
 		self.x_val = []
 		for data in datas:
@@ -307,12 +308,11 @@ def predict(text_file, model_file, config, vectors_file):
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
 		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
-	
-	predictions = classifier.predict(x_data)
-	print(predictions)
 
 	# LIME
 	if config["ENABLE_LIME"]:
+		predictions = classifier.predict(x_data)
+		print(predictions)
 		lime = []
 		preprocessing.set_model(classifier)
 		explainer = LimeTextExplainer(split_expression=" ")
@@ -354,10 +354,10 @@ def predict(text_file, model_file, config, vectors_file):
 		i += 1
 
 	# FLATTEN LAYER
-	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-3]] 
-	last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-	last_model.summary()
-	flatten = last_model.predict(x_data)[-1]
+	#layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-3]] 
+	#last_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	#last_model.summary()
+	#flatten = last_model.predict(x_data)[-1]
 
 	"""
 	# LAST LAYER
@@ -396,6 +396,7 @@ def predict(text_file, model_file, config, vectors_file):
 		tds = False
 
 	# ATTENTION LAYER
+	"""
 	if config["ENABLE_LSTM"]:
 		layer_outputs = [layer.output for layer in classifier.layers[len(x_data):attention_layer]] 
 		attention_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
@@ -404,14 +405,18 @@ def predict(text_file, model_file, config, vectors_file):
 		attention = attention_model.predict(x_data)[-1]
 	else:
 		attention = False
+	"""
 
 	# DENSE LAYER 1
-	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-2]]
-	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-	dense_model.summary()
-	dense1 = dense_model.predict(x_data)[-1]
+	#layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-2]]
+	#dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	#dense_model.summary()
+	#dense1 = dense_model.predict(x_data)[-1]
 
 	# DENSE LAYER 1
+	print("----------------------------")
+	print("SOFTMAX BREAKDOWN")
+	print("----------------------------")	
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
 	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	dense_model.summary()
@@ -426,10 +431,10 @@ def predict(text_file, model_file, config, vectors_file):
 		csv2= "ID;Type\n"
 
 		print(sentence_nb , "/" , len(x_data[0]))
-		sentence = {}
-		sentence["sentence"] = []
-		sentence["prediction"] = dense2[sentence_nb].tolist()
-		prediction_index = sentence["prediction"].index(max(sentence["prediction"]))
+		sentence = []
+		sentence += [[]]
+		sentence += [dense2[sentence_nb].tolist()]
+		prediction_index = sentence[1].index(max(sentence[1]))
 
 		total = {}
 
@@ -446,7 +451,7 @@ def predict(text_file, model_file, config, vectors_file):
 				attention_value = 0
 			
 			# GET TDS VALUES
-			word = {}
+			word = []
 			for channel in range(preprocessing.nb_channels):
 				#print(channel , "/" , len(tds))
 
@@ -497,24 +502,24 @@ def predict(text_file, model_file, config, vectors_file):
 					tds_value = np.dot(vec2, weight2) + dense_bias[1]
 					tds_value *= 100
 
-				# FILL THE WORD VALUES
-				channel_name = "channel" + str(channel)
-				word[channel_name] = {}
 
 				#print(x_data[channel][sentence_nb].shape)
 				index = x_data[channel][sentence_nb][i]
 
-				word[channel_name]["str"] = dictionaries[channel]["index_word"][index]
-				if word[channel_name]["str"] == "UK":
-					word[channel_name]["str"] = raw_text[word_nb].split("**")[channel]
-				word[channel_name]["tds"] = tds_value.tolist()
-				word[channel_name]["attention"] = str(attention_value)
+				word_str = dictionaries[channel]["index_word"][index]
+				if word_str == "UK":
+					word_str = raw_text[word_nb].split("**")[channel]
+				word_tds = tds_value.tolist()
+				word += [{word_str : word_tds}]
+
+				#word[channel_name]["attention"] = str(attention_value)
+				"""
 				if config["ENABLE_LIME"]:
 					try:
 						word[channel_name]["lime"] = lime[sentence_nb][word[channel_name]["str"]]
 					except:
 						word[channel_name]["lime"] = lime[sentence_nb]["UK"]
-				
+				"""
 				#print(word[channel_name]["str"], channel, sentence_nb, i, from_i, to_j)
 				
 				#pca = {}
@@ -565,7 +570,7 @@ def predict(text_file, model_file, config, vectors_file):
 				csv2 += str(i) + "_" + word[channel_name]["str"] + ";" + "input\n"
 				"""
 
-			sentence["sentence"] += [word]	
+			sentence[0] += [word]	
 			word_nb += 1
 		
 		"""
