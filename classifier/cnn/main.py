@@ -23,23 +23,21 @@ from lime.lime_text import LimeTextExplainer
 
 class PreProcessing:
 
-	def loadData(self, corpus_file, model_file, config, create_dictionnary):   
+	def loadData(self, corpus_file, model_file, config, isTrainingData):   
 		
 		print("loading data...")
 		
+		f = open(corpus_file, "r")
+		lines = f.readlines()
 		self.corpus_file = corpus_file
-		
+		self.raw_text = []
+
 		label_dic = {}
 		labels = []
 		texts = {}
-		
-		# Read text and detect classes/labels
-		self.num_classes = 0
-		
-		f = open(corpus_file, "r")
-		lines = f.readlines()
 		cpt = 0
 		t0 = time.time()
+
 		for line in lines:
 
 			if cpt%100 == 0:
@@ -48,17 +46,22 @@ class PreProcessing:
 				t0 = t1
 
 			# LABELS
-			label = line.split("__ ")[0].replace("__", "")
-			if label not in label_dic.keys():
-				label_dic[label] = self.num_classes
-				self.num_classes += 1
-			label_int = label_dic[label]
-			labels += [label_int]
+			if isTrainingData:
+				label = line.split("__ ")[0].replace("__", "")
+				"""
+				if label not in label_dic.keys():
+					label_dic[label] = self.num_classes
+					self.num_classes += 1
+				label_int = label_dic[label]
+				"""
+				label_int = config["CLASSES"].index(label)
+				labels += [label_int]
+				line = line.replace("__" + label + "__ ", "")
 
 			# TEXT
-			line = line.replace("__" + label + "__ ", "")
 			sequence = []
 			for token in line.split():
+				self.raw_text += [token]
 				args = token.split("**")
 				if len(sequence) == 0:
 					sequence = [""]*len(args)
@@ -73,23 +76,24 @@ class PreProcessing:
 				texts[i].append(sequence[i])
 		
 			cpt += 1
-
 		f.close()
+
 		for i, text in texts.items():
 			f = open(corpus_file + "." + str(i), "w")
 			for sequence in text:
 				f.write(sequence + "\n")
 			f.close()
 		
-		print("DETECTED LABELS :")
+		#print("DETECTED LABELS :")
 		#print(label_dic)
+		self.num_classes = len(config["CLASSES"])
 
 		#data = list(zip(labels, texts))
 		#random.shuffle(data)
 		#labels, texts = zip(*data)
 
-		dictionaries, datas = tokenize(texts, model_file, create_dictionnary, config)
-		#print(dictionaries[1])
+		dictionaries, datas = tokenize(texts, model_file, isTrainingData, config)
+		print("love:", dictionaries[0]["word_index"]["love"])
 
 		for i, dictionary in enumerate(dictionaries):
 			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
@@ -97,13 +101,10 @@ class PreProcessing:
 		# Size of validation sample
 		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
 
-		# SHUFFLE
-		indices = np.arange(datas[0].shape[0])
-		if create_dictionnary: # ONLY FOR TRAINING
+		# split the data into a training set and a validation set
+		indices = np.arange(datas[0].shape[0])		
+		if isTrainingData:
 			np.random.shuffle(indices)
-
-		# split the data into a training set and a validation set		
-		if create_dictionnary:
 			labels = np_utils.to_categorical(np.asarray(labels))
 			print('Shape of label tensor:', labels.shape)
 			labels = labels[indices]
@@ -170,9 +171,18 @@ class PreProcessing:
 
 def train(corpus_file, model_file, config):
 
+	"""
+	if "__TEST__" in model_file:
+				
+		model_file = model_file.replace("__TEST__", "")
+		predictions = predict(corpus_file, model, config, 0)	
+
+		return [0,0]
+	"""
+	
 	# preprocess data
 	preprocessing = PreProcessing()
-	preprocessing.loadData(corpus_file, model_file, config, create_dictionnary = True)
+	preprocessing.loadData(corpus_file, model_file, config, isTrainingData = True)
 	
 	if config["SG"] != -1:
 		preprocessing.loadEmbeddings(model_file, config)
@@ -185,15 +195,30 @@ def train(corpus_file, model_file, config):
 	for dictionary in preprocessing.dictionaries:
 		config["vocab_size"] += [len(dictionary["word_index"])]
 
-	# create and get model
-	cnn_model = models.CNNModel()
-	model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
+	# TEST DATASET
+	"""
+	if "__TEST__" in model_file:
+		
+		# CREATE TEST DATA
+		x_data = []
+		for channel in range(len(preprocessing.x_train)):
+			x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
+		y_data = np.concatenate((preprocessing.y_train, preprocessing.y_val), axis=0)
 
-	# train model
+		# get score
+		model = load_model(model_file.replace("__TEST__", ""))
+		scores = model.evaluate(x_data, y_data, verbose=1)
+		return scores
+	"""
+
+	# GET TRAIN DATASET
 	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
 	checkpoint = ModelCheckpoint(model_file, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 	callbacks_list = [checkpoint]
-	
+
+	# create and get model
+	cnn_model = models.CNNModel()
+	model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
 	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# Plot training & validation loss values
@@ -280,7 +305,7 @@ def train(corpus_file, model_file, config):
 	scores = model.evaluate(x_val, y_val, verbose=0)
 	return scores
 	
-def predict(text_file, model_file, config, vectors_file):
+def predict(text_file, model_file, config):
 
 	result = []
 
@@ -289,8 +314,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 	# preprocess data
 	preprocessing = PreProcessing()
-	preprocessing.loadData(text_file, model_file, config, create_dictionnary = False)
-	raw_text = open(text_file, "r").read().split()
+	preprocessing.loadData(text_file, model_file, config, isTrainingData = False)
 
 	# get dictionnaries
 	dictionaries = preprocessing.dictionaries
@@ -508,7 +532,7 @@ def predict(text_file, model_file, config, vectors_file):
 
 				word_str = dictionaries[channel]["index_word"][index]
 				if word_str == "UK":
-					word_str = raw_text[word_nb].split("**")[channel]
+					word_str = preprocessing.raw_text[word_nb].split("**")[channel]
 				word_tds = tds_value.tolist()
 				word += [{word_str : word_tds}]
 

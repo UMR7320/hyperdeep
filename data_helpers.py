@@ -1,9 +1,13 @@
 import pickle
 import numpy as np
 
-def tokenize(texts, model_file, create_dictionnary, config):
+def tokenize(texts, model_file, isTrainingData, config):
 
-	if create_dictionnary:
+	if "__TEST__" in model_file:
+		isTrainingData = False
+		model_file = model_file.replace("__TEST__", "")
+
+	if isTrainingData:
 		dictionaries = []
 		indexes = [1,1,1]
 		for i in range(3):
@@ -44,7 +48,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			sentence = []
 			for j, word in enumerate(words):
 				if word not in dictionaries[channel]["word_index"].keys():
-					if create_dictionnary:
+					if isTrainingData:
 						
 						# FILTERS
 						# not a number and len > 1
@@ -87,7 +91,7 @@ def tokenize(texts, model_file, create_dictionnary, config):
 			datas[channel][line_number] = sentence
 			line_number += 1
 
-	if create_dictionnary:
+	if isTrainingData:
 		with open(model_file + ".index", 'wb') as handle:
 			pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

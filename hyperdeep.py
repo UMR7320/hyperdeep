@@ -118,6 +118,8 @@ if __name__ == '__main__':
             config["acc"] = scores[1]*100 # Accuracy
 
             # SAVE CONFIG FILE
+            with open(model_file + ".spec", "w") as spec: 
+                json.dump(config["Z_SCORE"], spec) 
             del config["Z_SCORE"]
             config_json = open(model_file + ".config", "w")
             config_json.write(json.dumps(config))
@@ -140,14 +142,14 @@ if __name__ == '__main__':
         try:
             args = get_args()
             model_file = args[2]
-            vectors_file = args[3]
+            vectors_file = args[3] # REMOVE THIS PARAMETERS
             text_file = args[4]
             config = json.loads(open(model_file + ".config", "r").read())
             if "-lime" in args.keys():
                 config["ENABLE_LIME"] = args["-lime"]
             else:
                 config["ENABLE_LIME"] = False
-            predictions = predict(text_file, model_file, config, vectors_file)
+            predictions = predict(text_file, model_file, config)
 
             # save predictions in a file
             result_path = "results/" + os.path.basename(text_file) + ".res"
