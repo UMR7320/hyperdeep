@@ -68,7 +68,7 @@ def tokenize(texts, model_file, isTrainingData, config):
 								except :
 									pass
 						# IF WORD IS SKIPED THEN ADD "UK" word
-						if skip_word: 
+						if False:#skip_word: 
 							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["UK"]
 						else:	 
 							indexes[channel] += 1

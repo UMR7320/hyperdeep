@@ -149,7 +149,7 @@ if __name__ == '__main__':
                 config["ENABLE_LIME"] = args["-lime"]
             else:
                 config["ENABLE_LIME"] = False
-            predictions = predict(text_file, model_file, config)
+            predictions, _, _ = predict(text_file, model_file, config)
 
             # save predictions in a file
             result_path = "results/" + os.path.basename(text_file) + ".res"
