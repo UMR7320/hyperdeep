@@ -172,25 +172,35 @@ class PreProcessing:
 def train(corpus_file, model_file, config):
 
 	if "__TEST__" in model_file:
+
+		import operator
+		import time
+		import os
 		
 		model_file = model_file.replace("__TEST__", "")
+		classifier = load_model(model_file)
 
 		preprocessing = PreProcessing()
 		preprocessing.loadData(corpus_file, model_file, config, isTrainingData = True)
+		preprocessing.classifier = classifier
 
 		x_data = []
 		for channel in range(len(preprocessing.x_train)):
 			x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
 		y_data = np.concatenate((preprocessing.y_train, preprocessing.y_val), axis=0)
 
+		"""
+		predictions = classifier.predict(x_data)
+		sorted_predictions = {}
+		for i, p in enumerate(predictions):
+			sorted_predictions[i] = max(p)
+		sorted_predictions = sorted(sorted_predictions.items(), key=operator.itemgetter(1), reverse=True)
+		"""
+
 		config["num_classes"] = preprocessing.num_classes 
 		config["vocab_size"] = []
 		for dictionary in preprocessing.dictionaries:
 			config["vocab_size"] += [len(dictionary["word_index"])]
-
-		import operator
-		import time
-		import os
 
 		try:
 			os.remove(model_file+"_lime.csv")
@@ -200,69 +210,70 @@ def train(corpus_file, model_file, config):
 			pass
 
 		nb_sample = 100
-		nb_feature = 10
+		nb_feature = 50
+		#cpt = 0
+		#for p in sorted_predictions:
 		for i in range(nb_sample):
+			
+			#if cpt == nb_sample: break
+			#cpt += 1
+			#i = p[0]
+
 			t0 = time.time()
 
 			# GET SENTENCE TO TEST
 			preprocessing.x_data = []
 			preprocessing.x_data += [np.array(x_data[0][i]).reshape(1, config["SEQUENCE_SIZE"])]
 
+			sentence=[]
+			for data in preprocessing.x_data[0][0]:
+				sentence += [preprocessing.dictionaries[0]["index_word"][data]]
+			print(" ".join(sentence))
+
 			# GET DEFAUT PREDICTION
 			config["ENABLE_LIME"] = True
-			tds, classifier, lime = predict(corpus_file, model_file, config, preprocessing)
-
-			
-			sentence=""
-			for data in preprocessing.x_data[0][0]:
-				sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-			
-			preprocessing.classifier = classifier
+			tds, lime = predict(corpus_file, model_file, config, preprocessing)		
 			predicted_class = tds[0][1].index(max(tds[0][1]))
 			predicted_score = tds[0][1][predicted_class]
 			print("PREDICTED CLASSE:", config["CLASSES"][predicted_class], predicted_score)
 			
 			config["ENABLE_LIME"] = False
 			current_processing_data = preprocessing.x_data
-			"""
-			sentence=""
-			for data in preprocessing.x_data[0][0]:
-				sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-			print(sentence)
-			"""
 
 			# TEST LIME
 			print("-"*50)
 			print("LIME")
+			print("-"*50)
 			lime_csv = open(model_file+"_lime.csv", "a+")
 			lime_csv.write(str(i)+"\t"+str(predicted_score)+"\t")
 			lime_dic = {}
 			for e in lime:
-				lime_dic[e[0]] = e[1]
+				for j in range(sentence.count(e[0])):
+					lime_dic[e[0] + "**" + str(j)] = e[1]
 			lime_dic = sorted(lime_dic.items(), key=operator.itemgetter(1), reverse=True)
 
 			for word in lime_dic[:nb_feature]:
-				word_id = preprocessing.dictionaries[0]["word_index"][word[0]]
+				word_str = word[0].split("**")[0]
+				word_id = preprocessing.dictionaries[0]["word_index"][word_str]
 				entry = []
-				sentence = []
+				test_sentence = []
+				already_taken = False
 				for e in preprocessing.x_data[0].reshape(config["SEQUENCE_SIZE"]):
-					if e == word_id:
+					if e == word_id and not already_taken:
 						entry += [0]
+						already_taken = True
 					else:
 						entry += [e]
-					sentence += [preprocessing.dictionaries[0]["index_word"][entry[-1]]]
-				#print(" ".join(sentence))
+					test_sentence += [preprocessing.dictionaries[0]["index_word"][entry[-1]]]
+				
 				preprocessing.x_data = []
 				preprocessing.x_data += [np.array(entry).reshape(1, config["SEQUENCE_SIZE"])]
-				results, _, _ = predict(corpus_file, model_file, config, preprocessing)
+				results, _ = predict(corpus_file, model_file, config, preprocessing)
 				current_score = results[0][1][predicted_class]
 				lime_csv.write(str(current_score)+"\t")
-				
-				#new_sentence=""
-				#for data in preprocessing.x_data[0][0]:
-				#	new_sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-				#print(new_sentence)
-				print("REMOVING:", word[0], "SCORE:", current_score)
+
+				#print(" ".join(test_sentence))
+				print("REMOVING:", word_str, "SCORE:", current_score)
 
 			lime_csv.write('\n')
 			lime_csv.close()
@@ -273,12 +284,6 @@ def train(corpus_file, model_file, config):
 			spec = json.load(open(model_file + ".spec", "r"))
 			
 			preprocessing.x_data = current_processing_data
-			"""
-			sentence=""
-			for data in preprocessing.x_data[0][0]:
-				sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-			print(sentence)
-			"""
 
 			spec = spec[config["CLASSES"][predicted_class]]["FORME"]
 			z_list = {}
@@ -286,32 +291,33 @@ def train(corpus_file, model_file, config):
 			z_csv.write(str(i)+"\t"+str(predicted_score)+"\t")
 			for word in sentence:
 				try:
-					z_list[word] = spec[word]["z"]
+					for j in range(sentence.count(word)):
+						z_list[word + "**" + str(j)] = spec[word]["z"]
 				except:
-					z_list[word] = 0
+					pass
 			z_list = sorted(z_list.items(), key=operator.itemgetter(1), reverse=True)
 			for word in z_list[:nb_feature]:
-				word_id = preprocessing.dictionaries[0]["word_index"][word[0]]
+				word_str = word[0].split("**")[0]
+				word_id = preprocessing.dictionaries[0]["word_index"][word_str]
 				entry = []
-				sentence = []
+				test_sentence = []
+				already_taken = False
 				for e in preprocessing.x_data[0].reshape(config["SEQUENCE_SIZE"]):
-					if e == word_id:
+					if e == word_id and not already_taken:
 						entry += [0]
+						already_taken = True
 					else:
 						entry += [e]
-					sentence += [preprocessing.dictionaries[0]["index_word"][entry[-1]]]
-				#print(" ".join(sentence))
+					test_sentence += [preprocessing.dictionaries[0]["index_word"][entry[-1]]]
+				
 				preprocessing.x_data = []
 				preprocessing.x_data += [np.array(entry).reshape(1, config["SEQUENCE_SIZE"])]
-				results, _, _ = predict(corpus_file, model_file, config, preprocessing)
+				results, _ = predict(corpus_file, model_file, config, preprocessing)
 				current_score = results[0][1][predicted_class]
 				z_csv.write(str(current_score)+"\t")
 
-				#new_sentence=""
-				#for data in preprocessing.x_data[0][0]:
-				#	new_sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-				#print(new_sentence)
-				print("REMOVING:", word[0], "SCORE:", current_score)
+				#print(" ".join(test_sentence))
+				print("REMOVING:", word_str, "SCORE:", current_score)
 
 			z_csv.write('\n')
 			z_csv.close()
@@ -322,14 +328,12 @@ def train(corpus_file, model_file, config):
 			tds_csv = open(model_file+"_tds.csv", "a+")
 			
 			preprocessing.x_data = current_processing_data
-			sentence=""
-			for data in preprocessing.x_data[0][0]:
-				sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-			print(sentence)
 
 			tds_csv.write(str(i)+"\t"+str(predicted_score)+"\t")
 			tds_list = {}
 			for j, word in enumerate(tds[0][0]):
+				current_tds = word[0][next(iter(word[0]))][predicted_class]
+				"""
 				try:
 					word_prev = tds[0][0][j-1]
 					prev_tds = word_prev[0][next(iter(word_prev[0]))][predicted_class]
@@ -340,10 +344,10 @@ def train(corpus_file, model_file, config):
 					next_tds = word_next[0][next(iter(word_next[0]))][predicted_class]
 				except:
 					next_tds = 0
-				current_tds = word[0][next(iter(word[0]))][predicted_class]
-
 				if (current_tds > prev_tds and current_tds > next_tds): # TDS Peak
 					tds_list[j] = current_tds
+				"""
+				tds_list[j] = current_tds
 
 			tds_list = sorted(tds_list.items(), key=operator.itemgetter(1), reverse=True)
 
@@ -354,32 +358,32 @@ def train(corpus_file, model_file, config):
 				except:
 					break
 				entry = []
-				sentence = []
+				test_sentence = []
 				word_str = ""
 				for j, e in enumerate(preprocessing.x_data[0].reshape(config["SEQUENCE_SIZE"])):
-					current_tds = tds[0][0][j][0][next(iter(tds[0][0][j][0]))][predicted_class]
+					#current_tds = tds[0][0][j][0][next(iter(tds[0][0][j][0]))][predicted_class]
 					#if j >= position[0]-2 and j <= position[0]+2: #and current_tds > tds_list[f+1][1]:
 					if j == position[0]:
 						entry += [0]
 						word_str += preprocessing.dictionaries[0]["index_word"][e] + " "
 					else:
 						entry += [e]
+					test_sentence += [preprocessing.dictionaries[0]["index_word"][entry[-1]]]
+
 				preprocessing.x_data = []
 				preprocessing.x_data += [np.array(entry).reshape(1, config["SEQUENCE_SIZE"])]
-				results, _, _ = predict(corpus_file, model_file, config, preprocessing)
+				results, _ = predict(corpus_file, model_file, config, preprocessing)
 				current_score = results[0][1][predicted_class]
 				tds_csv.write(str(current_score)+"\t")
 
-				#new_sentence=""
-				#for data in preprocessing.x_data[0][0]:
-				#	new_sentence += preprocessing.dictionaries[0]["index_word"][data] + " "
-				#print(new_sentence)
+				#print(" ".join(test_sentence))
 				print("REMOVING:", word_str, "SCORE:", current_score)	
 
 			tds_csv.write('\n')
 			tds_csv.close()
 
 			print(i, "/", nb_sample, time.time() - t0)
+			print("-"*50)
 
 		return [0,0]
 	
@@ -510,10 +514,7 @@ def predict(text_file, model_file, config, preprocessing=False):
 		classifier = load_model(model_file)
 	else:
 		x_data = preprocessing.x_data
-	try:
 		classifier = preprocessing.classifier
-	except:
-		classifier = load_model(model_file)
 
 	# get dictionnaries
 	dictionaries = preprocessing.dictionaries
@@ -640,11 +641,13 @@ def predict(text_file, model_file, config, preprocessing=False):
 		csv = "Source;Target;Weight;Type\n"
 		csv2= "ID;Type\n"
 
-		#print(sentence_nb , "/" , len(x_data[0]))
+		
 		sentence = []
 		sentence += [[]]
 		sentence += [dense2[sentence_nb].tolist()]
 		prediction_index = sentence[1].index(max(sentence[1]))
+
+		#print(sentence_nb , "/" , len(x_data[0]), "==>", sentence[1])
 
 		total = {}
 
@@ -672,41 +675,15 @@ def predict(text_file, model_file, config, preprocessing=False):
 
 					# OLD TDS
 					#tds_value = sum(tds[-(channel+1)][sentence_nb][i])
-
-					"""
-					activations = [0]*config["DENSE_LAYER_SIZE"]
-					tds_value = 0
-					for _i in range(from_i, to_j):
-						for _j, weight in enumerate(dense_weights[0][_i]):
-							x = int(_i/config["EMBEDDING_DIM"])
-							y = _i%config["EMBEDDING_DIM"]
-							activations[_j] += tds[-(channel+1)][sentence_nb][x][y]*weight
-							#print(_i,_j,x,y,activations[_j])
-					
-					for _i, activation in enumerate(activations):
-						if activation > 0:
-							tds_value += activation*dense_weights[1][_i][prediction_index]
-					"""
+					#tds_value = [tds_value, tds_value]
 
 					# NEW TDS
 					tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
-					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i] # <== TEST -1 ???
+					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 					from_i = (i*tds_size*preprocessing.nb_channels) + (channel*tds_size)
 					to_j = from_i + tds_size
 					weight1 = dense_weights[0][from_i:to_j,:]
 					vec = np.dot(tds1, weight1) + dense_bias[0]
-
-					"""
-					tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
-					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
-					from_i = channel*config["EMBEDDING_DIM"]
-					vec = np.zeros(len(dense_bias[0]))
-					while from_i < (len(x_data[0][sentence_nb])*config["EMBEDDING_DIM"]*preprocessing.nb_channels) - config["EMBEDDING_DIM"]:
-						to_j = from_i + config["EMBEDDING_DIM"]
-						weight1 = dense_weights[0][from_i:to_j,:]
-						vec += np.dot(tds1, weight1) + dense_bias[0]
-						from_i += (config["EMBEDDING_DIM"]*preprocessing.nb_channels) + (channel*config["EMBEDDING_DIM"])
-					"""
 
 					vec2 = vec * (vec>0) # RELU
 
@@ -714,7 +691,8 @@ def predict(text_file, model_file, config, preprocessing=False):
 					#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
 					tds_value = np.dot(vec2, weight2) + dense_bias[1]
 					tds_value *= 100
-
+					tds_value = tds_value.tolist()
+					
 
 				#print(x_data[channel][sentence_nb].shape)
 				index = x_data[channel][sentence_nb][i]
@@ -722,8 +700,7 @@ def predict(text_file, model_file, config, preprocessing=False):
 				word_str = dictionaries[channel]["index_word"][index]
 				if word_str == "UK":
 					word_str = preprocessing.raw_text[word_nb].split("**")[channel]
-				word_tds = tds_value.tolist()
-				word += [{word_str : word_tds}]
+				word += [{word_str : tds_value}]
 
 				#word[channel_name]["attention"] = str(attention_value)
 				"""
@@ -858,4 +835,4 @@ def predict(text_file, model_file, config, preprocessing=False):
 	# CREATE THE GIF ANIMATION
 	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
 	"""
-	return result, classifier, lime 
+	return result, lime 

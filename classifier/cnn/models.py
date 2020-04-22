@@ -159,13 +159,13 @@ class CNNModel:
 			flat = Flatten()(merged)
 			#flat = merged
 			
-		dropout = Dropout(config["DROPOUT_VAL"])(flat)
+		#dropout = Dropout(config["DROPOUT_VAL"])(flat)
 		#print("Dropout :", dropout.shape)
 
 		# ------------------
 		# HIDDEN DENSE LAYER
 		# ------------------	
-		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform', activation='relu')(dropout)
+		hidden_dense = Dense(config["DENSE_LAYER_SIZE"], kernel_initializer='uniform', activation='relu')(flat)
 
 		# -----------------
 		# FINAL DENSE LAYER
