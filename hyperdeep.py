@@ -8,7 +8,7 @@ import sys
 import os
 import json
 
-from classifier.cnn.main import train, predict
+from classifier.cnn.main import train, predict, test
 from skipgram.skipgram_with_NS import create_vectors, get_most_similar
 import tensorflow as tf
 
@@ -113,7 +113,10 @@ if __name__ == '__main__':
             print(config["BACH_SIZE"])
 
             # TRAIN
-            scores = train(corpus_file, model_file, config)
+            if "__TEST__" in model_file:
+                scores = test(corpus_file, model_file, config)
+            else:
+                scores = train(corpus_file, model_file, config)
             config["loss"] = scores[0]*100 # Loss
             config["acc"] = scores[1]*100 # Accuracy
 
@@ -149,7 +152,7 @@ if __name__ == '__main__':
                 config["ENABLE_LIME"] = args["-lime"]
             else:
                 config["ENABLE_LIME"] = False
-            predictions, _ = predict(text_file, model_file, config)
+            predictions = predict(text_file, model_file, config)
 
             # save predictions in a file
             result_path = "results/" + os.path.basename(text_file) + ".res"

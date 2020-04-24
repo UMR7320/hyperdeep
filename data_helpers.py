@@ -1,5 +1,7 @@
 import pickle
 import numpy as np
+import nltk
+from nltk.corpus import stopwords
 
 def tokenize(texts, model_file, isTrainingData, config):
 
@@ -50,6 +52,7 @@ def tokenize(texts, model_file, isTrainingData, config):
 				if word not in dictionaries[channel]["word_index"].keys():
 					if isTrainingData:
 						
+						"""
 						# FILTERS
 						# not a number and len > 1
 						skip_word = word.isdigit() or len(word) == 1
@@ -67,6 +70,11 @@ def tokenize(texts, model_file, isTrainingData, config):
 										break
 								except :
 									pass
+						"""
+						skip_word = words_formes[j] in set(stopwords.words('english'))
+						skip_word = skip_word or len(words_formes[j]) <= 2
+						skip_word = skip_word or words_formes[j] == "__PARA__"
+
 						# IF WORD IS SKIPED THEN ADD "UK" word
 						if False:#skip_word: 
 							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["UK"]
