@@ -486,9 +486,14 @@ def test(corpus_file, model_file, config):
 		classe = np.argmax(y_data[i])
 		predictions_by_classe[classe] = predictions_by_classe.get(classe, {})
 		predictions_by_classe[classe][i] = p[classe]
+	sorted_predictions_by_classe = {}
 	for classe, predictions in predictions_by_classe.items():
-		predictions_by_classe[classe] = sorted(predictions_by_classe[classe].items(), key=operator.itemgetter(1), reverse=True)
-		predictions_by_classe[classe] = predictions_by_classe[classe][:nb_sample]
+		sorted_predictions_by_classe[classe] = sorted(predictions_by_classe[classe].items(), key=operator.itemgetter(1), reverse=True)
+		sorted_predictions_by_classe[classe] = sorted_predictions_by_classe[classe][:nb_sample]
+
+
+	for classe, predictions in sorted_predictions_by_classe.items():
+		print(classe, len(predictions))
 
 	try:
 		os.remove(model_file+"_lime.csv")
@@ -500,10 +505,10 @@ def test(corpus_file, model_file, config):
 	# GET SPEC
 	spec = json.load(open(model_file + ".spec", "r"))
 
-	sample_id = 0
-	for classe, sorted_predictions in predictions_by_classe.items():
+	for classe, sorted_predictions in sorted_predictions_by_classe.items():
+
+		sample_id = 0
 		for p in sorted_predictions:
-		#for i in range(nb_sample):
 			
 			i = p[0]
 
