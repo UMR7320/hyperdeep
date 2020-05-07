@@ -559,7 +559,6 @@ def test(corpus_file, model_file, config):
 			config["ENABLE_LIME"] = False
 			current_processing_data = preprocessing.x_data
 
-			"""
 			# TEST LIME
 			print("-"*50)
 			print("LIME")
@@ -689,7 +688,6 @@ def test(corpus_file, model_file, config):
 
 			z_csv.write('\n')
 			z_csv.close()
-			"""
 
 			# TEST TDS
 			print("-"*50)
