@@ -385,7 +385,9 @@ def predict(text_file, model_file, config, preprocessing=False):
 		deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 		#print("DECONVOLUTION summary:")
 		#deconv_model.summary()
+		t0 = time.time()
 		tds = deconv_model.predict(x_data)#[-1]
+		print("tds predict time", time.time() - t0)
 	else:
 		tds = False
 
@@ -395,7 +397,10 @@ def predict(text_file, model_file, config, preprocessing=False):
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
 	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
 	#dense_model.summary()
+
+	t0 = time.time()
 	dense2 = dense_model.predict(x_data)[-1]
+	print("dense predict time", time.time() - t0)
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
@@ -531,6 +536,8 @@ def test(corpus_file, model_file, config):
 
 		sample_id = 0
 		for p in sorted_predictions:
+
+			preprocessing.classifier = load_model(model_file)
 			
 			i = p[0]
 
@@ -547,6 +554,9 @@ def test(corpus_file, model_file, config):
 			predicted_class = tds[0][1].index(max(tds[0][1]))
 			predicted_score = tds[0][1][predicted_class]
 
+			print("t1", time.time() - t0)
+			t0 = time.time()
+
 			sentence=[]
 			for j, word in enumerate(tds[0][0]):
 				word_str = next(iter(word[0]))
@@ -558,6 +568,9 @@ def test(corpus_file, model_file, config):
 			
 			config["ENABLE_LIME"] = False
 			current_processing_data = preprocessing.x_data
+
+			print("t1", time.time() - t0)
+			t0 = time.time()
 
 			# TEST LIME
 			print("-"*50)
@@ -577,7 +590,13 @@ def test(corpus_file, model_file, config):
 				lime_dic[word_str] = lime_value
 			lime_dic = sorted(lime_dic.items(), key=operator.itemgetter(1), reverse=True)
 
+			print("t3", time.time() - t0)
+			t0 = time.time()
+
 			for lime_entry in lime_dic[:nb_feature]:
+
+				print("t41", time.time() - t0)
+				t0 = time.time()
 
 				words_ids = []
 				for channel, arg in enumerate(lime_entry[0].split("**")):
@@ -591,6 +610,9 @@ def test(corpus_file, model_file, config):
 				X = []
 				for channel in range(preprocessing.nb_channels):
 					X += [[]]
+
+				print("t42", time.time() - t0)
+				t0 = time.time()
 
 				for channel in range(preprocessing.nb_channels):
 					entry = []
@@ -612,13 +634,22 @@ def test(corpus_file, model_file, config):
 					X[channel] = np.asarray(X[channel])
 				preprocessing.x_data = X
 
+				print("t43", time.time() - t0)
+				t0 = time.time()
+
 				results = predict(corpus_file, model_file, config, preprocessing)
 				current_score = results[0][1][predicted_class]
+
+				print("t44", time.time() - t0)
+				t0 = time.time()
 
 				#print(" ".join(test_sentence))
 				#ratio = (predicted_score-current_score)/matched_cpt
 				print("REMOVING:", lime_entry[0], "ACCURACY:", current_score, "NB_WORD:", matched_cpt)
 				lime_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+
+				print("t44", time.time() - t0)
+				t0 = time.time()
 
 			lime_csv.write('\n')
 			lime_csv.close()
