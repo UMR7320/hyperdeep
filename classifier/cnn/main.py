@@ -25,9 +25,17 @@ import imageio
 
 from lime.lime_text import LimeTextExplainer
 
+# FOR TEST
+from keras.backend.tensorflow_backend import set_session
+from keras.backend.tensorflow_backend import clear_session
+from keras.backend.tensorflow_backend import get_session
+import tensorflow
+import gc
+from pympler.tracker import SummaryTracker
+
 class PreProcessing:
 
-	def loadData(self, corpus_file, model_file, config, isTrainingData):   
+	def loadData(self, corpus_file, model_file, config, getLabels, createDictionary):   
 		
 		print("loading data...")
 		
@@ -51,24 +59,28 @@ class PreProcessing:
 				t0 = t1
 
 			# LABELS
-			if isTrainingData:
+			if getLabels:
 				label = line.split("__ ")[0].replace("__", "")
 				label_int = config["CLASSES"].index(label)
 				labels += [label_int]
 				line = line.replace("__" + label + "__ ", "")
 
 			# TEXT
-			sequence = []
+			if config["TG"]:
+				sequence = ["", "", ""] # MULTICHANNELS
+			else:
+				sequence = [""] # MONOCHANNEL
 			for token in line.split():
 				self.raw_text += [token]
 				args = token.split("**")
-				if len(sequence) == 0:
-					sequence = [""]*len(args)
-				for i, arg in enumerate(args):
+				for i in range(len(sequence)):
 					try:
-						sequence[i] += arg + " "
+						if not args[i]:
+							sequence[i] += "PAD "
+						else:
+							sequence[i] += args[i] + " "
 					except:
-						sequence += ["PAD "]
+						sequence[i] += "PAD "
 
 			for i in range(len(sequence)):
 				texts[i] = texts.get(i, [])
@@ -87,31 +99,36 @@ class PreProcessing:
 		#print(label_dic)
 		self.num_classes = len(config["CLASSES"])
 
-		dictionaries, datas = tokenize(texts, model_file, isTrainingData, config)
+		dictionaries, datas = tokenize(texts, model_file, createDictionary, config)
 
 		for i, dictionary in enumerate(dictionaries):
 			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
 
-		# Size of validation sample
+		# Size of each dataset (train, valid, test)
 		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
+		nb_testing_samples = nb_validation_samples + int(config["TESTING_SPLIT"] * datas[0].shape[0])
 
 		# split the data into a training set and a validation set
 		indices = np.arange(datas[0].shape[0])		
-		if isTrainingData:
+		if createDictionary:
 			np.random.shuffle(indices)
+		if getLabels:
 			labels = np_utils.to_categorical(np.asarray(labels))
 			print('Shape of label tensor:', labels.shape)
 			labels = labels[indices]
-			self.y_train = labels[:-nb_validation_samples]
-			self.y_val = labels[-nb_validation_samples:]
+			self.y_val = labels[:nb_validation_samples]
+			self.y_test = labels[nb_validation_samples:nb_testing_samples]
+			self.y_train = labels[nb_testing_samples:]
 
 		self.x_train = []
 		self.x_val = []
+		self.x_test = []
 		self.x_data = []
 		for data in datas:
 			data = data[indices]
-			self.x_train += [data[:-nb_validation_samples]]
-			self.x_val += [data[-nb_validation_samples:]]
+			self.x_val += [data[:nb_validation_samples]]
+			self.x_test += [data[nb_validation_samples:nb_testing_samples]]
+			self.x_train += [data[nb_testing_samples:]]
 
 		self.dictionaries = dictionaries
 		self.nb_channels = len(texts.keys())
@@ -163,7 +180,7 @@ class PreProcessing:
 					entry = []
 					for i, word in enumerate(t.split(" ")):
 						if word == "": # LIME word removing algo
-							entry += [0]
+							entry += [1] # ==> replace to __UK__ word see data_helpers
 						else:
 							idx = word.split("**")[channel]
 							entry += [self.dictionaries[channel]["word_index"].get(word, 0)]
@@ -188,7 +205,7 @@ def train(corpus_file, model_file, config):
 	
 	# preprocess data
 	preprocessing = PreProcessing()
-	preprocessing.loadData(corpus_file, model_file, config, isTrainingData = True)
+	preprocessing.loadData(corpus_file, model_file, config, getLabels=True, createDictionary=True)
 	
 	if config["SG"] != -1:
 		preprocessing.loadEmbeddings(model_file, config)
@@ -202,7 +219,10 @@ def train(corpus_file, model_file, config):
 		config["vocab_size"] += [len(dictionary["word_index"])]
 
 	# GET TRAIN DATASET
-	x_train, y_train, x_val, y_val = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val
+	x_train, y_train, x_val, y_val, x_test, y_test = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val, preprocessing.x_test, preprocessing.y_test
+	print("Available samples:")
+	print("train:", len(y_train), "valid:", y_val, "test:", y_test)
+
 	checkpoint = ModelCheckpoint(model_file, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 	callbacks_list = [checkpoint]
 
@@ -292,11 +312,20 @@ def train(corpus_file, model_file, config):
 	# ------------------------------------
 
 	# get score
+	print("-"*50)
+	print("TESTING")
+	print(len(y_train), len(y_val), len(y_test))
 	model = load_model(model_file)
-	scores = model.evaluate(x_val, y_val, verbose=0)
+	if len(y_test):
+		scores = model.evaluate(x_test, y_test, verbose=1)
+	else:
+		scores = model.evaluate(x_val, y_val, verbose=1)
+	print(scores)
 	return scores
 	
 def predict(text_file, model_file, config, preprocessing=False):
+
+	test_dataset = False
 
 	result = []
 
@@ -304,16 +333,18 @@ def predict(text_file, model_file, config, preprocessing=False):
 	deconv_images = []
 
 	# preprocess data 
-	if not preprocessing: # <== ADDED FOR TESTING
+	if not preprocessing: 
 		preprocessing = PreProcessing()
-		preprocessing.loadData(text_file, model_file, config, isTrainingData = False)
+		preprocessing.loadData(text_file, model_file, config, getLabels=False, createDictionary=False)
 		x_data = []
 		for channel in range(len(preprocessing.x_train)):
-			x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
+			x_data += [np.concatenate((preprocessing.x_val[channel],preprocessing.x_test[channel],preprocessing.x_train[channel]), axis=0)]
 		classifier = load_model(model_file)
-	else:
+	
+	else: # ONLY FOR TEST DATASET
 		x_data = preprocessing.x_data
 		classifier = preprocessing.classifier
+		test_dataset = True
 
 	# get dictionnaries
 	dictionaries = preprocessing.dictionaries
@@ -387,20 +418,22 @@ def predict(text_file, model_file, config, preprocessing=False):
 		#deconv_model.summary()
 		t0 = time.time()
 		tds = deconv_model.predict(x_data)#[-1]
-		print("tds predict time", time.time() - t0)
+		#print("tds predict time", time.time() - t0)
 	else:
 		tds = False
 
-	#print("----------------------------")
-	#print("SOFTMAX BREAKDOWN")
-	#print("----------------------------")	
-	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
+	if test_dataset:
+		layer_outputs = [layer.output for layer in classifier.layers] # STANDARD OUTPUT
+	else:
+		#----------------------------
+		#SOFTMAX BREAKDOWN
+		#----------------------------
+		layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
 	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
-	#dense_model.summary()
 
 	t0 = time.time()
 	dense2 = dense_model.predict(x_data)[-1]
-	print("dense predict time", time.time() - t0)
+	#print("dense predict time", time.time() - t0)
 
 	# READ PREDICTION SENTENCE BY SENTENCE
 	word_nb = 0
@@ -461,7 +494,7 @@ def predict(text_file, model_file, config, preprocessing=False):
 						 lime_word_str += dictionaries[k]["index_word"][idx] + "**"
 					tds_value += [lime[lime_word_str.strip("**")]]
 
-				if word_str == "UK":
+				if word_str == "__UK__":
 					word_str = preprocessing.raw_text[word_nb].split("**")[channel]
 				word += [{word_str : tds_value}]
 
@@ -493,22 +526,39 @@ def predict(text_file, model_file, config, preprocessing=False):
 
 def test(corpus_file, model_file, config):
 
+	tracker = SummaryTracker()
+
 	model_file = model_file.replace("__TEST__", "")
 	config = json.loads(open(model_file + ".config", "r").read())
 	classifier = load_model(model_file)
 
 	preprocessing = PreProcessing()
-	preprocessing.loadData(corpus_file, model_file, config, isTrainingData = True)
+	preprocessing.loadData(corpus_file, model_file, config, getLabels=True, createDictionary=False)
 	preprocessing.classifier = classifier
 
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):
-		x_data += [np.concatenate((preprocessing.x_train[channel],preprocessing.x_val[channel]), axis=0)]
-	y_data = np.concatenate((preprocessing.y_train, preprocessing.y_val), axis=0)
-	
+		x_data += [np.concatenate((preprocessing.x_val[channel], preprocessing.x_test[channel], preprocessing.x_train[channel]), axis=0)]
+	y_data = np.concatenate((preprocessing.y_val, preprocessing.y_test, preprocessing.y_train), axis=0)
+
+	for i, sentence in enumerate(x_data[0]):
+		if (i==10): break
+		sentence_to_String = ""
+		for j, w in enumerate(sentence):
+			for channel in range(3):
+				word = x_data[channel][i][j]
+				sentence_to_String += preprocessing.dictionaries[channel]["index_word"][word] + "**"
+			sentence_to_String = sentence_to_String.strip("**") + " "
+
+		print(sentence_to_String, y_data[i])
+		print("-"*50)
+
+	scores = classifier.evaluate(x_data, y_data, verbose=1)
+	print(scores)
+	return scores
 	results = classifier.predict(x_data)
 
-	nb_feature = 10
+	nb_feature = 50
 	nb_sample = 500
 	nb_sample = int(nb_sample/len(config["CLASSES"]))
 
@@ -526,18 +576,54 @@ def test(corpus_file, model_file, config):
 		os.remove(model_file+"_lime.csv")
 		os.remove(model_file+"_z.csv")
 		os.remove(model_file+"_tds.csv")
+		os.remove(model_file+"_logit.csv")
 	except:
 		pass
 
 	# GET SPEC
 	spec = json.load(open(model_file + ".spec", "r"))
 
+	# GET LOGIT
+	logit_file = open(model_file + "_feat.csv", "r").readlines()
+	classes = logit_file[0].split(",")
+	logit = {}
+	for line in logit_file[1:]:
+		args = line.split(",")
+		for c, arg in enumerate(args[1:]):
+			logit[classes[c+1]] = logit.get(classes[c+1], {})
+			logit[classes[c+1]][arg] = args[0]
+
 	for classe, sorted_predictions in sorted_predictions_by_classe.items():
 
 		sample_id = 0
 		for p in sorted_predictions:
 
-			preprocessing.classifier = load_model(model_file)
+			if sample_id%20 == 0:
+				sess = get_session()
+				clear_session()
+				sess.close()
+				sess = get_session()
+
+				try:
+					del preprocessing.classifier # this is from global space - change this as you need
+					del tds
+					del lime_csv
+					del z_csv
+					del tds_csv
+				except:
+					pass
+
+				print(gc.collect()) # if it's done something you should see a number being outputted
+
+				# use the same config as you used to create the session
+				tensorflow_config = tensorflow.ConfigProto()
+				tensorflow_config.gpu_options.per_process_gpu_memory_fraction = 1
+				tensorflow_config.gpu_options.visible_device_list = "0"
+				set_session(tensorflow.Session(config=tensorflow_config))
+
+				tracker.print_diff()
+
+				preprocessing.classifier = load_model(model_file)
 			
 			i = p[0]
 
@@ -554,25 +640,28 @@ def test(corpus_file, model_file, config):
 			predicted_class = tds[0][1].index(max(tds[0][1]))
 			predicted_score = tds[0][1][predicted_class]
 
-			print("t1", time.time() - t0)
-			t0 = time.time()
+			#print("t1", time.time() - t0)
+			#t0 = time.time()
 
 			sentence=[]
+			sentence_to_String = ""
 			for j, word in enumerate(tds[0][0]):
 				word_str = next(iter(word[0]))
 				for channel in range(preprocessing.nb_channels)[1:]:
 					word_str += "**" + next(iter(word[channel]))
 				sentence += [word_str]
-			print(" ".join(sentence))
+				sentence_to_String += next(iter(word[0])) + " "
+			print(sentence_to_String)
 			print("PREDICTED CLASSE:", config["CLASSES"][predicted_class], predicted_score)
 			
 			config["ENABLE_LIME"] = False
 			current_processing_data = preprocessing.x_data
 
-			print("t1", time.time() - t0)
-			t0 = time.time()
+			#print("t1", time.time() - t0)
+			#t0 = time.time()
 
 			# TEST LIME
+			"""
 			print("-"*50)
 			print("LIME")
 			print("-"*50)
@@ -590,19 +679,23 @@ def test(corpus_file, model_file, config):
 				lime_dic[word_str] = lime_value
 			lime_dic = sorted(lime_dic.items(), key=operator.itemgetter(1), reverse=True)
 
-			print("t3", time.time() - t0)
-			t0 = time.time()
+			#print("t3", time.time() - t0)
+			#t0 = time.time()
 
-			for lime_entry in lime_dic[:nb_feature]:
+			matched_cpt = 0
+			for id_feature in range(nb_feature):
+				try:
+					lime_entry = lime_dic[id_feature]
+				except:
+					lime_entry = lime_dic[-1]
 
-				print("t41", time.time() - t0)
-				t0 = time.time()
+				#print("t41", time.time() - t0)
+				#t0 = time.time()
 
 				words_ids = []
 				for channel, arg in enumerate(lime_entry[0].split("**")):
 					words_ids += [preprocessing.dictionaries[channel]["word_index"][arg]]
 				
-				matched_cpt = 0
 				word_str = lime_entry[0]
 				entry = []
 				test_sentence = []
@@ -611,8 +704,8 @@ def test(corpus_file, model_file, config):
 				for channel in range(preprocessing.nb_channels):
 					X += [[]]
 
-				print("t42", time.time() - t0)
-				t0 = time.time()
+				#print("t42", time.time() - t0)
+				#t0 = time.time()
 
 				for channel in range(preprocessing.nb_channels):
 					entry = []
@@ -623,37 +716,31 @@ def test(corpus_file, model_file, config):
 								match = False
 								break
 						if match:
-							entry += [0]
-							if channel == 0:
-								matched_cpt += 1
+							entry += [1] # ==> replace to __UK__ word see data_helpers
+							matched_cpt += 1
 						else:
 							entry += [preprocessing.x_data[channel][0][i]]
 					X[channel] += [entry]
 
 				for channel in range(preprocessing.nb_channels):
 					X[channel] = np.asarray(X[channel])
+
+				#print(preprocessing.x_data)
+				#print(X)
 				preprocessing.x_data = X
 
-				print("t43", time.time() - t0)
-				t0 = time.time()
+				#print(preprocessing.x_data)
+				print("REMOVING:", lime_entry[0])
 
-				results = predict(corpus_file, model_file, config, preprocessing)
-				current_score = results[0][1][predicted_class]
-
-				print("t44", time.time() - t0)
-				t0 = time.time()
-
-				#print(" ".join(test_sentence))
-				#ratio = (predicted_score-current_score)/matched_cpt
-				print("REMOVING:", lime_entry[0], "ACCURACY:", current_score, "NB_WORD:", matched_cpt)
-				lime_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
-
-				print("t44", time.time() - t0)
-				t0 = time.time()
+				if (id_feature+1)%5 == 0:
+					results = predict(corpus_file, model_file, config, preprocessing)
+					current_score = results[0][1][predicted_class]
+					print("ACCURACY:", current_score, "NB_WORD:", matched_cpt)
+					lime_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+					#matched_cpt = 0
 
 			lime_csv.write('\n')
 			lime_csv.close()
-
 
 			# TEST Z-SCORE
 			print("-"*50)
@@ -675,9 +762,14 @@ def test(corpus_file, model_file, config):
 					except:
 						print("NO SPEC FOR", spec_type + ":" + word)
 						pass
-			z_list = sorted(z_list.items(), key=operator.itemgetter(1), reverse=True)[:nb_feature]
+			z_list = sorted(z_list.items(), key=operator.itemgetter(1), reverse=True)
 
-			for spec_entry in z_list:
+			matched_cpt = 0
+			for id_feature in range(nb_feature):
+				try:
+					spec_entry = z_list[id_feature]
+				except:
+					spec_entry = z_list[-1]
 
 				X = []
 				for channel in range(preprocessing.nb_channels):
@@ -689,7 +781,6 @@ def test(corpus_file, model_file, config):
 					word_str = ":".join(word_str.split(":")[1:])
 				word_id = preprocessing.dictionaries[word_channel]["word_index"][word_str]
 
-				matched_cpt = 0
 				entry = []
 				test_sentence = []
 
@@ -698,24 +789,26 @@ def test(corpus_file, model_file, config):
 					for i in range(config["SEQUENCE_SIZE"]):
 						#print(channel, word_channel, preprocessing.x_data[channel][0][i], word_id)
 						if channel == word_channel and preprocessing.x_data[channel][0][i] == word_id:
-							entry += [0]
+							entry += [1] # ==> replace to __UK__ word see data_helpers
 							matched_cpt += 1
 						else:
 							entry += [preprocessing.x_data[channel][0][i]]
 						test_sentence += [preprocessing.dictionaries[channel]["index_word"][entry[-1]]]
 					X[channel] += [entry]
 
+				print("REMOVING:", spec_entry[0])
+
 				for channel in range(preprocessing.nb_channels):
 					X[channel] = np.asarray(X[channel])
 				preprocessing.x_data = X
 				
-				#print(" ".join(test_sentence))				
-				results = predict(corpus_file, model_file, config, preprocessing)
-				current_score = results[0][1][predicted_class]
-
-				#ratio = (predicted_score-current_score)/matched_cpt
-				print("REMOVING:", spec_entry[0], "ACCURACY:", current_score, "NB_WORD:", matched_cpt)
-				z_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+				
+				if (id_feature+1)%5 == 0:			
+					results = predict(corpus_file, model_file, config, preprocessing)
+					current_score = results[0][1][predicted_class]
+					print("ACCURACY:", current_score, "NB_WORD:", matched_cpt)
+					z_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+					#matched_cpt = 0
 
 			z_csv.write('\n')
 			z_csv.close()
@@ -746,11 +839,15 @@ def test(corpus_file, model_file, config):
 					if (current_tds > prev_tds and current_tds > next_tds): # TDS Peak
 						j = str(channel) + "_" + str(j)
 						tds_list[j] = current_tds
-			tds_list = sorted(tds_list.items(), key=operator.itemgetter(1), reverse=True)[:nb_feature]
+			tds_list = sorted(tds_list.items(), key=operator.itemgetter(1), reverse=True)
 
-			#for f in range(int(nb_feature/(int(config["FILTER_SIZES"][0])*2-1))):
-			for tds_entry in tds_list:
-
+			matched_cpt = 0
+			#for id_feature, tds_entry in enumerate(tds_list[:nb_feature]):
+			for id_feature in range(nb_feature):
+				try:
+					tds_entry = tds_list[id_feature]
+				except:
+					tds_entry = tds_list[-1]
 				X = []
 				for channel in range(preprocessing.nb_channels):
 					X += [[]]
@@ -759,7 +856,6 @@ def test(corpus_file, model_file, config):
 				word_position = int(tds_entry[0].split("_")[1])
 				word_str = ""
 
-				matched_cpt = 0
 				entry = []
 				test_sentence = []
 
@@ -768,65 +864,111 @@ def test(corpus_file, model_file, config):
 					for i in range(config["SEQUENCE_SIZE"]):
 						current_tds = tds[0][0][i][channel][next(iter(tds[0][0][i][channel]))][predicted_class]
 						e = preprocessing.x_data[channel][0][i]
-						if e != 0 and i >= word_position-2 and i <= word_position+2 and current_tds >= tds_list[-1][1]:
-							entry += [0]
+						if e != 1 and i >= word_position-2 and i <= word_position+2 and id_feature < len(tds_list)-1 and current_tds >= tds_list[id_feature+1][1]:
+							entry += [1] # ==> replace to __UK__ word see data_helpers
 							matched_cpt += 1
 							word_str += str(channel)+ "_" + preprocessing.dictionaries[channel]["index_word"][e] + " "
 						else:
 							entry += [e]
 						test_sentence += [preprocessing.dictionaries[channel]["index_word"][entry[-1]]]
-						"""
-						if channel == word_channel and preprocessing.x_data[channel][0][i] == word_id:
-							entry += [0]
-							matched_cpt += 1
-						else:
-							entry += [preprocessing.x_data[channel][0][i]]
-						test_sentence += [preprocessing.dictionaries[channel]["index_word"][entry[-1]]]
-						"""
 					X[channel] += [entry]
 
 				for channel in range(preprocessing.nb_channels):
 					X[channel] = np.asarray(X[channel])
+				
 				preprocessing.x_data = X
 
-				"""
-				matched_cpt = 0
-				try:
-					position = tds_list[f]
-				except:
-					break
-				entry = []
-				test_sentence = []
-				word_str = ""
-				for j, e in enumerate(preprocessing.x_data[0].reshape(config["SEQUENCE_SIZE"])):
-					current_tds = tds[0][0][j][0][next(iter(tds[0][0][j][0]))][predicted_class]
-					if e != 0 and j >= position[0]-2 and j <= position[0]+2 and current_tds >= tds_list[-1][1]:
-					#if j == position[0]:
-						entry += [0]
-						word_str += preprocessing.dictionaries[0]["index_word"][e] + " "
-						matched_cpt += 1
-					else:
-						entry += [e]
-					test_sentence += [preprocessing.dictionaries[0]["index_word"][entry[-1]]]
+				#print(preprocessing.x_data)
+				print("REMOVING:", word_str)
 
-				preprocessing.x_data = []
-				preprocessing.x_data += [np.array(entry).reshape(1, config["SEQUENCE_SIZE"])]
-				"""
-
-				results = predict(corpus_file, model_file, config, preprocessing)
-				current_score = results[0][1][predicted_class]
-
-				#print(" ".join(test_sentence))
-				#ratio = (predicted_score-current_score)/matched_cpt
-				print("REMOVING:", word_str, "ACCURACY:", current_score, "NB_WORD:", matched_cpt)
-				tds_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+				if (id_feature+1)%5 == 0:
+					results = predict(corpus_file, model_file, config, preprocessing)
+					current_score = results[0][1][predicted_class]
+					print("ACCURACY:", current_score, "NB_WORD:", matched_cpt)
+					tds_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+					#matched_cpt = 0
 
 			tds_csv.write('\n')
 			tds_csv.close()
 
+			# TEST LOGIT
+			print("-"*50)
+			print("LOGIT")
+			logit_csv = open(model_file+"_logit.csv", "a+")
+			
+			preprocessing.x_data = current_processing_data
+
+			logit_csv.write(config["CLASSES"][classe]+"\t"+str(predicted_score)+"\t")
+			
+			logit_csv_list = []
+			
+			predicted_logit = logit[config["CLASSES"][predicted_class]]
+			#print(predicted_logit)
+			logit_list = {}
+			logit_type = ["FORM_", "POS_", "LEM_"]
+			for word in sentence:
+				try:
+					word = word.split("**")
+					for channel, word_arg in enumerate(word):
+						word_logit = logit_type[channel] + word_arg
+						logit_list[str(channel) + "_" + word_arg] = predicted_logit[word_logit]
+				except:
+					#print("NO LOGIT FOR", logit_type[channel] + word_arg)
+					pass
+			logit_list = sorted(logit_list.items(), key=operator.itemgetter(1), reverse=True)
+
+
+			matched_cpt = 0
+			for id_feature in range(nb_feature):
+				try:
+					logit_entry = logit_list[id_feature]
+				except:
+					logit_entry = logit_list[-1]
+
+				X = []
+				for channel in range(preprocessing.nb_channels):
+					X += [[]]
+
+				word_channel = int(logit_entry[0].split("_")[0])
+				word_str = "_".join(logit_entry[0].split("_")[1:])
+				word_id = preprocessing.dictionaries[word_channel]["word_index"][word_str]
+
+				entry = []
+				test_sentence = []
+
+				for channel in range(preprocessing.nb_channels):
+					entry = []
+					for i in range(config["SEQUENCE_SIZE"]):
+						#print(channel, word_channel, preprocessing.x_data[channel][0][i], word_id)
+						if channel == word_channel and preprocessing.x_data[channel][0][i] == word_id:
+							entry += [0] # ==> replace to __UK__ word see data_helpers
+							matched_cpt += 1
+						else:
+							entry += [preprocessing.x_data[channel][0][i]]
+						test_sentence += [preprocessing.dictionaries[channel]["index_word"][entry[-1]]]
+					X[channel] += [entry]
+
+				print("REMOVING:", logit_entry[0])
+
+				for channel in range(preprocessing.nb_channels):
+					X[channel] = np.asarray(X[channel])
+				preprocessing.x_data = X
+				
+				
+				if (id_feature+1)%5 == 0:			
+					results = predict(corpus_file, model_file, config, preprocessing)
+					current_score = results[0][1][predicted_class]
+					print("ACCURACY:", current_score, "NB_WORD:", matched_cpt)
+					logit_csv.write(str(current_score)+"\t"+str(matched_cpt)+"\t")
+					#matched_cpt = 0
+
+			logit_csv.write('\n')
+			logit_csv.close()
+			"""
 
 			print(config["CLASSES"][classe], sample_id, "/", nb_sample, time.time() - t0)
 			print("-"*50)
 			sample_id += 1
 
-	return [0,0]
+
+	return scores

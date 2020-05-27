@@ -3,13 +3,10 @@ import numpy as np
 import nltk
 from nltk.corpus import stopwords
 
-def tokenize(texts, model_file, isTrainingData, config):
+def tokenize(texts, model_file, createDictionary, config):
 
-	if "__TEST__" in model_file:
-		isTrainingData = False
-		model_file = model_file.replace("__TEST__", "")
-
-	if isTrainingData:
+	if createDictionary:
+		print("CREATE A NEW DICTIONARY")
 		dictionaries = []
 		indexes = [1,1,1]
 		for i in range(3):
@@ -18,11 +15,12 @@ def tokenize(texts, model_file, isTrainingData, config):
 			dictionary["index_word"] = {}
 			dictionary["word_index"]["PAD"] = 0  # Padding
 			dictionary["index_word"][0] = "PAD"
-			dictionary["word_index"]["UK"] = 1 # Unknown word
-			dictionary["index_word"][1] = "UK" 
+			dictionary["word_index"]["__UK__"] = 1 # Unknown word
+			dictionary["index_word"][1] = "__UK__" 
 			dictionaries += [dictionary]
 	else:
 		with open(model_file + ".index", 'rb') as handle:
+			print("OPEN EXISTING DICTIONARY:", model_file + ".index")
 			dictionaries = pickle.load(handle)
 	datas = []		
 
@@ -47,11 +45,11 @@ def tokenize(texts, model_file, isTrainingData, config):
 				words_codes = False
 
 			sentence_length = len(words)
+
 			sentence = []
 			for j, word in enumerate(words):
 				if word not in dictionaries[channel]["word_index"].keys():
-					if isTrainingData:
-						
+					if createDictionary:
 						"""
 						# FILTERS
 						# not a number and len > 1
@@ -71,13 +69,13 @@ def tokenize(texts, model_file, isTrainingData, config):
 								except :
 									pass
 						"""
-						skip_word = words_formes[j] in set(stopwords.words('english'))
-						skip_word = skip_word or len(words_formes[j]) <= 2
-						skip_word = skip_word or words_formes[j] == "__PARA__"
+						#skip_word = words_formes[j] in set(stopwords.words('english'))
+						#skip_word = skip_word or len(words_formes[j]) <= 2
+						#skip_word = skip_word or words_formes[j] == "__PARA__"
 
 						# IF WORD IS SKIPED THEN ADD "UK" word
 						if False:#skip_word: 
-							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["UK"]
+							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["__UK__"]
 						else:	 
 							indexes[channel] += 1
 							dictionaries[channel]["word_index"][word] = indexes[channel]
@@ -85,10 +83,8 @@ def tokenize(texts, model_file, isTrainingData, config):
 
 					else:        
 						# FOR UNKNOWN WORDS
-						try:
-							dictionaries[channel]["word_index"][word] = dictionaries[channel]["word_index"]["UK"]
-						except:
-							dictionaries[channel]["word_index"][word] = dictionaries[channel]["word_index"]["PAD"]
+						dictionaries[channel]["word_index"][word] = dictionaries[channel]["word_index"]["__UK__"]
+
 				sentence.append(dictionaries[channel]["word_index"][word])
 
 			# COMPLETE WITH PAD IF LENGTH IS < SEQUENCE_SIZE
@@ -99,7 +95,7 @@ def tokenize(texts, model_file, isTrainingData, config):
 			datas[channel][line_number] = sentence
 			line_number += 1
 
-	if isTrainingData:
+	if createDictionary:
 		with open(model_file + ".index", 'wb') as handle:
 			pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
