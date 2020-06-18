@@ -307,7 +307,7 @@ def train(corpus_file, model_file, config):
 				word = preprocessing.dictionaries[channel]["index_word"].get(index, "PAD")
 
 				# MUTLI CHANNEL
-				if len(preprocessing.x_train) == len(embedding):
+				if config["TG"]:
 					wordvector = embedding[channel][sentence_nb][i]
 
 				# ONE CHANNEL
