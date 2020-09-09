@@ -366,8 +366,8 @@ def predict(text_file, model_file, config, preprocessing=False):
 	print("----------------------------")
 
 	# Plot training & validation accuracy values ---- 
-	plot_model(classifier,show_shapes=False, to_file='model.dot')
-	plot_model(classifier, to_file='model.png')
+	#plot_model(classifier,show_shapes=False, to_file='model.dot')
+	#plot_model(classifier, to_file='model.png')
 	# -----------------------------------------------
 
 	# LIME

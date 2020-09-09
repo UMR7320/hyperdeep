@@ -85,6 +85,8 @@ class CNNModel:
 						FILTER_SIZES = int(FILTER_SIZES)
 					except:
 						FILTER_SIZES = int(FILTER_SIZES.split("-")[i])
+
+					print("FILTER_SIZES", FILTER_SIZES)
 					
 					conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
 					print("conv", i,  conv[i].shape)
