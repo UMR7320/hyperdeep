@@ -52,7 +52,8 @@ def tokenize(texts, model_file, createDictionary, config):
 					if createDictionary:
 						# IF WORD IS SKIPED THEN ADD "UK" word
 						try:
-							skip_word = words_codes[j] in config["FILTERS"] and channel != 1
+							#skip_word = words_codes[j] in config["FILTERS"] and channel != 1
+							skip_word = channel != 1 and any(s in words_codes[j].split(":") for s in config["FILTERS"])
 						except:
 							skip_word = False
 						if skip_word: 
