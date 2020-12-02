@@ -11,10 +11,10 @@ import os
 
 from keras.utils import plot_model
 from keras.utils import np_utils
-from keras.models import load_model
-from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
-from keras.models import Model
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
+from tensorflow.keras.models import Model
 
 from classifier.cnn import models
 from skipgram.skipgram_with_NS import create_vectors
@@ -23,14 +23,6 @@ import scipy.misc as smp
 import imageio
 
 from lime.lime_text import LimeTextExplainer
-
-# FOR TEST
-from keras.backend.tensorflow_backend import set_session
-from keras.backend.tensorflow_backend import clear_session
-from keras.backend.tensorflow_backend import get_session
-import tensorflow
-import gc
-from pympler.tracker import SummaryTracker
 
 class PreProcessing:
 

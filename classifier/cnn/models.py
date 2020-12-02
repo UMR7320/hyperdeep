@@ -5,24 +5,24 @@ from keras import regularizers
 
 from keras import backend as K
 from keras.models import Sequential,Model
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import Flatten
-from keras.layers import LSTM
-from keras.layers import Input
-from keras.layers import Reshape
-from keras.layers import TimeDistributed
-from keras.layers import Activation
-from keras.layers import RepeatVector
-from keras.layers import Permute
-from keras.layers import Lambda
-from keras.layers import Conv1D, UpSampling1D, Conv2D, Conv2DTranspose, MaxPooling1D, MaxPooling2D, GlobalMaxPooling1D,  Embedding, Reshape
-from keras.layers import Input, Embedding, LSTM, GRU, Bidirectional, Dense
-from keras.layers import Lambda
-from keras.layers import concatenate
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Reshape
+from tensorflow.keras.layers import TimeDistributed
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import RepeatVector
+from tensorflow.keras.layers import Permute
+from tensorflow.keras.layers import Lambda
+from tensorflow.keras.layers import Conv1D, UpSampling1D, Conv2D, Conv2DTranspose, MaxPooling1D, MaxPooling2D, GlobalMaxPooling1D,  Embedding, Reshape
+from tensorflow.keras.layers import Input, Embedding, LSTM, GRU, Bidirectional, Dense
+from tensorflow.keras.layers import Lambda
+from tensorflow.keras.layers import concatenate
 from keras.utils import np_utils
-from keras.layers import multiply
-from keras.layers import BatchNormalization
+from tensorflow.keras.layers import multiply
+from tensorflow.keras.layers import BatchNormalization
 from keras.utils import multi_gpu_model
 
 from tensorflow.python.client import device_lib
