@@ -343,6 +343,12 @@ def train(corpus_file, model_file, config):
 # ------------------------------
 def predict(text_file, model_file, config, preprocessing=False):
 
+	# ------------------------------------------
+	# Force to use CPU (no need GPU on predict)
+	os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+	os.environ["CUDA_VISIBLE_DEVICES"] = ""
+	# ------------------------------------------
+
 	result = []
 
 	# preprocess data 
