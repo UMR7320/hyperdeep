@@ -12,7 +12,7 @@ import os
 from keras.utils import plot_model
 from keras.utils import np_utils
 from tensorflow.keras.models import load_model
-from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
 from tensorflow.keras.models import Model
 
@@ -236,7 +236,8 @@ def train(corpus_file, model_file, config):
 	print("train:", len(y_train), "valid:", y_val, "test:", y_test)
 
 	checkpoint = ModelCheckpoint(model_file, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-	callbacks_list = [checkpoint]
+	earlystop = EarlyStopping(monitor='val_accuracy', min_delta=0.01, patience=3, verbose=1, mode='max')
+	callbacks_list = [checkpoint, earlystop]
 
 	# create and get model
 	cnn_model = models.CNNModel()
@@ -244,16 +245,18 @@ def train(corpus_file, model_file, config):
 	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# Plot training & validation loss values
+	"""
 	plt.plot(history.history['loss'])
-	plt.plot(history.history['acc'])
+	plt.plot(history.history['accuracy'])
 	plt.plot(history.history['val_loss'])
-	plt.plot(history.history['val_acc'])
+	plt.plot(history.history['val_accuracy'])
 	plt.title('Model loss and accuracy')
 	plt.ylabel('Loss/Accuracy')
 	plt.xlabel('Epoch')
 	plt.legend(['train_loss', 'train_acc', 'val_loss', 'val_acc'], loc='upper right')
 	#plt.show()
 	plt.savefig(model_file + ".png")
+	"""
 
 	# ------------------------------------
 	# GET EMBEDDING MODEL
