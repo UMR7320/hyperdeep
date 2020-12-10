@@ -1,3 +1,4 @@
+import re
 import pickle
 import numpy as np
 import nltk
@@ -51,11 +52,23 @@ def tokenize(texts, model_file, createDictionary, config):
 				if word not in dictionaries[channel]["word_index"].keys():
 					if createDictionary:
 						# IF WORD IS SKIPED THEN ADD "UK" word
-						try:
-							#skip_word = words_codes[j] in config["FILTERS"] and channel != 1
-							skip_word = channel != 1 and any(s in words_codes[j].split(":") for s in config["FILTERS"])
-						except:
-							skip_word = False
+						skip_word = False
+						if channel != 1:
+							for f in config["FILTERS"]:
+								# Check Code
+								skip_word = skip_word or f in words_codes[j].split(":")
+								# Check Forme (regex)
+								skip_word = skip_word or re.match(f, word)
+								# Check Length
+								if "min(" in f:
+									f = f.replace("min(", "")[:-1]
+									skip_word = skip_word or len(word) < int(f)
+								elif "max(" in f:
+									f = f.replace("max(", "")[:-1]
+									skip_word = skip_word or len(word) > int(f)
+								if skip_word:
+									break
+
 						if skip_word: 
 							dictionaries[channel]["word_index"][word] = dictionary["word_index"]["__UK__"]
 						else:	 
