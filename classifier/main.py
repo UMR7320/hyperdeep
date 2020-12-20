@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-
 import random
 import numpy as np
 import time
@@ -9,6 +7,8 @@ import operator
 import time
 import os
 
+import matplotlib.pyplot as plt
+
 from keras.utils import plot_model
 from keras.utils import np_utils
 from tensorflow.keras.models import load_model
@@ -16,199 +16,27 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
 from tensorflow.keras.models import Model
 
-from classifier.cnn import models
-from skipgram.skipgram_with_NS import create_vectors
-from data_helpers import tokenize
+from preprocess.preprocessing import PreProcessing
+from classifier.models import Classifier
+from analyzer.lime import LimeExplainer
+
 import scipy.misc as smp
 import imageio
 
-from lime.lime_text import LimeTextExplainer
-
-class PreProcessing:
-
-	def loadData(self, corpus_file, model_file, config, getLabels, createDictionary):   
-		
-		print("loading data...")
-		
-		f = open(corpus_file, "r")
-		lines = f.readlines()
-		self.corpus_file = corpus_file
-		self.raw_text = []
-
-		label_dic = {}
-		labels = []
-		texts = {}
-		cpt = 0
-		t0 = time.time()
-
-		for line in lines:
-			if "--" in line: continue
-
-			if cpt%100 == 0:
-				t1 = time.time()
-				print(cpt, "/", len(lines))
-				t0 = t1
-
-			# LABELS
-			if getLabels:
-				label = line.split("__ ")[0].replace("__", "")
-				label_int = config["CLASSES"].index(label)
-				labels += [label_int]
-				line = line.replace("__" + label + "__ ", "")
-
-			# TEXT
-			if config["TG"]:
-				sequence = ["", "", ""] # MULTICHANNELS
-			else:
-				sequence = [""] # MONOCHANNEL
-			for token in line.split():
-				self.raw_text += [token]
-				args = token.split("**")
-				for i in range(len(sequence)):
-					try:
-						if not args[i]:
-							sequence[i] += "PAD "
-						else:
-							sequence[i] += args[i] + " "
-					except:
-						sequence[i] += "PAD "
-
-			for i in range(len(sequence)):
-				texts[i] = texts.get(i, [])
-				texts[i].append(sequence[i])
-		
-			cpt += 1
-		f.close()
-
-		for i, text in texts.items():
-			f = open(corpus_file + "." + str(i), "w")
-			for sequence in text:
-				f.write(sequence + "\n")
-			f.close()
-		
-		#print("DETECTED LABELS :")
-		#print(label_dic)
-		self.num_classes = len(config["CLASSES"])
-
-		dictionaries, datas = tokenize(texts, model_file, createDictionary, config)
-
-		for i, dictionary in enumerate(dictionaries):
-			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
-
-		# Size of each dataset (train, valid, test)
-		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
-		nb_testing_samples = nb_validation_samples + int(config["TESTING_SPLIT"] * datas[0].shape[0])
-
-		# split the data into a training set and a validation set
-		indices = np.arange(datas[0].shape[0])		
-		if getLabels:
-			np.random.shuffle(indices)
-			labels = np_utils.to_categorical(np.asarray(labels))
-			print('Shape of label tensor:', labels.shape)
-			labels = labels[indices]
-			self.y_val = labels[:nb_validation_samples]
-			self.y_test = labels[nb_validation_samples:nb_testing_samples]
-			self.y_train = labels[nb_testing_samples:]
-
-		self.x_train = []
-		self.x_val = []
-		self.x_test = []
-		self.x_data = []
-		for data in datas:
-			data = data[indices]
-			self.x_val += [data[:nb_validation_samples]]
-			self.x_test += [data[nb_validation_samples:nb_testing_samples]]
-			self.x_train += [data[nb_testing_samples:]]
-
-		self.dictionaries = dictionaries
-		self.nb_channels = len(texts.keys())
-
-	def loadEmbeddings(self, model_file, config, create_v = False):
-
-		print("LOADING WORD2VEC EMBEDDING")
-		
-		self.embedding_matrix = []
-
-		if not create_v:
-			create_vectors(self.corpus_file, model_file, config, nb_channels=self.nb_channels)
-
-		for i in range(self.nb_channels):
-			my_dictionary = self.dictionaries[i]["word_index"]
-			embeddings_index = {}
-			vectors = open(model_file + ".word2vec" + str(i) ,'r')
-				
-			for line in vectors.readlines():
-				values = line.split()
-				word = values[0]
-				coefs = np.asarray(values[1:], dtype='float32')
-				embeddings_index[word] = coefs
-
-			print('Found %s word vectors.' % len(embeddings_index))
-			self.embedding_matrix += [np.zeros((len(my_dictionary), config["EMBEDDING_DIM"]))]
-			for word, j in my_dictionary.items():
-				embedding_vector = embeddings_index.get(word)
-				if embedding_vector is not None:
-					# words not found in embedding index will be all-zeros.
-					self.embedding_matrix[i][j] = embedding_vector
-			vectors.close()
-
-	# ------------------------------
-	# LIME
-	def set_model(self, model):
-		self.model = model
-
-	import random
-	def classifier_fn(self, text):
-		
-		X = []
-
-		# MULTI-CHANNELs
-		if self.nb_channels > 1:
-			for channel in range(self.nb_channels):
-				X += [[]]
-			for t in text:
-				t = t.split(" ")
-				for channel in range(self.nb_channels):
-					entry = []
-					for i, word in enumerate(t):
-						if word != "": # LIME word removing algo
-							word = word.split("**")[channel]
-							entry += [self.dictionaries[channel]["word_index"].get(word, 0)]
-
-					for i in range(len(entry), len(t)):
-						entry += [0]
-					X[channel] += [entry]
-			for channel in range(self.nb_channels):
-				X[channel] = np.asarray(X[channel])
-
-		# MONO CHANNEL
-		else:
-			for t in text:
-				entry = []
-				for i, word in enumerate(t.split(" ")):
-					entry += [self.dictionaries[0]["word_index"].get(word, 0)]
-				X += [entry]
-			X = np.asarray(X)
-
-		#print_data(X, self)
-
-		P = self.model.predict(X)
-		return P
-
 # ------------------------------
-# TOOLS
+# Visualization tools
 # ------------------------------
-def print_data(data, preprocessing):
-	for i, sentence in enumerate(data[0]):
-		sentence_to_String = ""
-		for j, w in enumerate(sentence):
-			for channel in range(3):
-				word = data[channel][i][j]
-				sentence_to_String += preprocessing.dictionaries[channel]["index_word"][word] + "**"
-			sentence_to_String = sentence_to_String.strip("**") + " "
-
-		print(sentence_to_String)
-		print("-"*50)
+def plot_history(history):
+	plt.plot(history.history['loss'])
+	plt.plot(history.history['accuracy'])
+	plt.plot(history.history['val_loss'])
+	plt.plot(history.history['val_accuracy'])
+	plt.title('Model loss and accuracy')
+	plt.ylabel('Loss/Accuracy')
+	plt.xlabel('Epoch')
+	plt.legend(['train_loss', 'train_acc', 'val_loss', 'val_acc'], loc='upper right')
+	#plt.show()
+	plt.savefig(model_file + ".png")
 
 # ------------------------------
 # TRAIN
@@ -240,23 +68,12 @@ def train(corpus_file, model_file, config):
 	callbacks_list = [checkpoint, earlystop]
 
 	# create and get model
-	cnn_model = models.CNNModel()
-	model = cnn_model.getModel(config=config, weight=preprocessing.embedding_matrix)
+	classifier = Classifier()
+	model = classifier.getModel(config=config, weight=preprocessing.embedding_matrix)
 	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# Plot training & validation loss values
-	"""
-	plt.plot(history.history['loss'])
-	plt.plot(history.history['accuracy'])
-	plt.plot(history.history['val_loss'])
-	plt.plot(history.history['val_accuracy'])
-	plt.title('Model loss and accuracy')
-	plt.ylabel('Loss/Accuracy')
-	plt.xlabel('Epoch')
-	plt.legend(['train_loss', 'train_acc', 'val_loss', 'val_acc'], loc='upper right')
-	#plt.show()
-	plt.savefig(model_file + ".png")
-	"""
+	# plot_history(history)
 
 	# ------------------------------------
 	# GET EMBEDDING MODEL
@@ -372,36 +189,15 @@ def predict(text_file, model_file, config, preprocessing=False):
 	# -----------------------------------------------
 
 	# LIME
-	lime = []
 	if config["ENABLE_LIME"]:
-		predictions = classifier.predict(x_data)
-		preprocessing.set_model(classifier)
-		explainer = LimeTextExplainer(split_expression=" ")
-		for sentence_nb in range(len(x_data[0])): # Channel 0
-			lime_text = ""
-			for i in range(len(x_data[0][sentence_nb])):
-				for channel in range(preprocessing.nb_channels):
-					idx = x_data[channel][sentence_nb][i]
-					lime_text += dictionaries[channel]["index_word"][idx] + "**"
-				lime_text = lime_text.strip("**") + " "
-			lime_text = lime_text[:-1]
-			exp = explainer.explain_instance(lime_text, preprocessing.classifier_fn, num_features=config["SEQUENCE_SIZE"], top_labels=config["num_classes"])
-			predicted_label = list(predictions[sentence_nb]).index(max(predictions[sentence_nb]))
-			#print(predictions[i], predicted_label)
-			lime += [dict(exp.as_list(label=predicted_label))]
-			
-			# PRINT RESULTS
-			lime_html = open("lime.html", "w")
-			lime_html.write(exp.as_html())
-			print(exp.available_labels())
-			print ('\n'.join(map(str, exp.as_list(label=predicted_label))))
-		lime_list = exp.as_list(label=predicted_label)
-		lime = {}
-		for e in lime_list:
-			lime[e[0]] = e[1]
+		print("----------------------------")
+		print("LIME")
+		print("----------------------------")
+		limeExplainer = LimeExplainer(preprocessing, classifier)
+		lime = limeExplainer.analyze(x_data)
 
 	print("----------------------------")
-	print("DECONVOLUTION")
+	print("TDS")
 	print("----------------------------")	
 	# GET LAYER INDICES and weights
 	i = 0
@@ -427,7 +223,7 @@ def predict(text_file, model_file, config, preprocessing=False):
 	print("GET TDS...")
 	if config["ENABLE_CONV"]:
 		layer_outputs = [layer.output for layer in classifier.layers[len(x_data):conv_layers[-1]]] 
-		deconv_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+		deconv_model = Model(inputs=classifier.input, outputs=layer_outputs)
 		print("DECONVOLUTION summary:")
 		deconv_model.summary()
 		t0 = time.time()
@@ -439,7 +235,7 @@ def predict(text_file, model_file, config, preprocessing=False):
 	#SOFTMAX BREAKDOWN
 	#----------------------------
 	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):-1]]
-	dense_model = models.Model(inputs=classifier.input, outputs=layer_outputs)
+	dense_model = Model(inputs=classifier.input, outputs=layer_outputs)
 
 	t0 = time.time()
 	dense2 = dense_model.predict(x_data)[-1]
@@ -467,8 +263,6 @@ def predict(text_file, model_file, config, preprocessing=False):
 				if not tds:
 					tds_value = 0
 				else:
-
-
 					# -----------------------------------
 					# TDS CALCULATION
 					# -----------------------------------
@@ -527,27 +321,3 @@ def predict(text_file, model_file, config, preprocessing=False):
 	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
 	"""
 	return result
-
-# ------------------------------
-# TEST DATASET
-# ------------------------------
-def test(corpus_file, model_file, config):
-
-	tracker = SummaryTracker()
-
-	model_file = model_file.replace("__TEST__", "")
-	config = json.loads(open(model_file + ".config", "r").read())
-	classifier = load_model(model_file)
-
-	preprocessing = PreProcessing()
-	preprocessing.loadData(corpus_file, model_file, config, getLabels=True, createDictionary=False)
-	preprocessing.classifier = classifier
-
-	x_data = []
-	for channel in range(len(preprocessing.x_train)):
-		x_data += [np.concatenate((preprocessing.x_val[channel], preprocessing.x_test[channel], preprocessing.x_train[channel]), axis=0)]
-	y_data = np.concatenate((preprocessing.y_val, preprocessing.y_test, preprocessing.y_train), axis=0)
-
-	scores = classifier.evaluate(x_data, y_data, verbose=1)
-	print(scores)
-	return scores

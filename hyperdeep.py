@@ -8,12 +8,9 @@ import sys
 import os
 import json
 
-from classifier.cnn.main import train, predict, test
-from skipgram.skipgram_with_NS import create_vectors, get_most_similar
+from classifier.main import train, predict
+from preprocess.w2vec import create_vectors, get_most_similar
 import tensorflow as tf
-
-# DISABLE GPU
-#os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 def print_help():
     print("usage: python hyperdeep.py <command> <args>\n")
@@ -101,22 +98,8 @@ if __name__ == '__main__':
             except:
                 config["Z_SCORE"] = {}
 
-            # defaut bach size
-            print("Bach size:",)
-            if not config["BACH_SIZE"]:
-                # Check if gpu is available
-                if tf.test.is_gpu_available():
-                    config["BACH_SIZE"] = 256
-                    print("(gpu is available)",)
-                else:
-                    config["BACH_SIZE"] = 64
-            print(config["BACH_SIZE"])
-
             # TRAIN
-            if "__TEST__" in model_file:
-                scores = test(corpus_file, model_file, config)
-            else:
-                scores = train(corpus_file, model_file, config)
+            scores = train(corpus_file, model_file, config)
             config["loss"] = scores[0]*100 # Loss
             config["acc"] = scores[1]*100 # Accuracy
 
@@ -127,7 +110,6 @@ if __name__ == '__main__':
             config_json = open(model_file + ".config", "w")
             config_json.write(json.dumps(config))
             config_json.close()
-
 
         except:
             raise

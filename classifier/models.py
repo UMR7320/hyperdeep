@@ -27,7 +27,7 @@ from keras.utils import multi_gpu_model
 
 from tensorflow.python.client import device_lib
 
-class CNNModel:
+class Classifier:
 
 	def get_available_gpus(self):
 	    local_device_protos = device_lib.list_local_devices()
