@@ -80,7 +80,7 @@ def train(corpus_file, model_file, config):
 	print("-"*50)
 	print("EMBEDDING CALCULATION...")
 	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
-	embedding_model = models.Model(inputs=model.input, outputs=layer_outputs)
+	embedding_model = Model(inputs=model.input, outputs=layer_outputs)
 	embedding_model.summary()
 
 	# GET WORD EMBEDDINGS
