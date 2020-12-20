@@ -9,7 +9,9 @@ import numpy as np
 import random
 import os
 import pickle
+import re
 
+from keras.utils import np_utils
 from preprocess.w2vec import create_vectors
 
 # ----------------------------------------
