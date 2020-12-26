@@ -6,15 +6,18 @@ Created on 20 dec. 2020
 
 t.vanni@unice.fr
 '''
-from preprocess.preprocessing import PreProcessing
+import numpy as np
+from keras.utils import np_utils
+
+from preprocess.filtering import Filtering
+from generator.language import Language
 
 config = {}
-config["TG"] = 0
-config["CLASSES"] = []
-config["VALIDATION_SPLIT"] = 0.2
-config["TESTING_SPLIT"] = 0
-config["SEQUENCE_SIZE"] = 50
-config["FILTERS"] = []
+
+config["WORD_LENGTH"] = 5
+config["LSTM_SIZE"] = 128
+config["LEARNING_RATE"] = 0.01
+
 
 # ------------------------------
 # TRAIN
@@ -22,14 +25,13 @@ config["FILTERS"] = []
 def train(corpus_file, model_file):
 
 	# preprocess data
-	preprocessing = PreProcessing()
-	preprocessing.loadData(corpus_file, model_file, config, getLabels=False, createDictionary=True)
+	preprocessing = Filtering()
+	preprocessing.loadData(corpus_file, config)
 
-	# GET TRAIN DATASET
-	x_train, x_val, x_test = preprocessing.x_train, preprocessing.x_val, preprocessing.x_test
-	print("Available samples:")
-	print("train:", len(x_train[0]), "valid:", len(x_val[0]), "test:", len(x_test[0]))
-
+	# Train Language model
+	language = Language()
+	model = language.getModel(config, input_size=config["WORD_LENGTH"], output_size=len(preprocessing.unique_words))
+	history = model.fit(preprocessing.X, preprocessing.Y, validation_split=0.05, epochs=10, batch_size=32, shuffle=True)
 
 # ------------------------------
 # GENERATE
