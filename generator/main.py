@@ -15,6 +15,7 @@ from generator.language import Language
 config = {}
 
 config["WORD_LENGTH"] = 5
+config["EMBEDDING_SIZE"] = 300
 config["LSTM_SIZE"] = 128
 config["LEARNING_RATE"] = 0.01
 
