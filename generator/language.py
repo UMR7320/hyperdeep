@@ -42,7 +42,7 @@ class Language:
 		# ----------
 		# LSTM LAYER
 		# ----------
-		rnn = GRU(config["LSTM_SIZE"])(inputs)
+		rnn = Bidirectional(GRU(int(config["LSTM_SIZE"]/2)))(inputs)
 		print("rnn :", rnn.shape)
 
 		# -----------------

@@ -8,6 +8,7 @@ t.vanni@unice.fr
 '''
 
 import sys
+import os
 from generator.main import train, generate
 
 def print_help():
@@ -66,7 +67,7 @@ if __name__ == '__main__':
             args = get_args()
             model_file = args[2]
             text_file = args[3]
-            new_text = predict(model_file, text_file)
+            new_text = generate(model_file, text_file)
 
             # save predictions in a file
             result_path = "results/" + os.path.basename(text_file) + ".res"
