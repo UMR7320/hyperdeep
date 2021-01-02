@@ -209,6 +209,7 @@ class PreProcessing:
 							skip_word = False
 							if channel != 1:
 								for f in config["FILTERS"]:
+									if not f.strip(): continue
 									# Check Code
 									skip_word = skip_word or f in words_codes[j].split(":")
 									# Check Forme (regex)
