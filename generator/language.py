@@ -16,7 +16,7 @@ from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import RepeatVector
 from tensorflow.keras.layers import Permute
 from tensorflow.keras.layers import Lambda
-from tensorflow.keras.layers import Conv1D, UpSampling1D, Conv2D, Conv2DTranspose, MaxPooling1D, MaxPooling2D, GlobalMaxPooling1D,  Embedding, Reshape
+from tensorflow.keras.layers import Conv1D, UpSampling1D, Conv2D, Conv2DTranspose, MaxPooling1D, MaxPooling2D, GlobalMaxPooling1D,  Embedding, Reshape, Dropout
 from tensorflow.keras.layers import Input, Embedding, LSTM, GRU, Bidirectional, Dense
 from tensorflow.keras.layers import Lambda
 from tensorflow.keras.layers import concatenate
@@ -42,13 +42,37 @@ class Language:
 		# ----------
 		# LSTM LAYER
 		# ----------
-		rnn = Bidirectional(GRU(int(config["LSTM_SIZE"]/2)))(inputs)
-		print("rnn :", rnn.shape)
+		rnn1 =LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
+
+
+		rnn2 =LSTM(config["LSTM_SIZE"], return_sequences=False, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn1)
+
+		# ---------------
+		# ATTENTION LAYER
+		# ---------------
+		"""
+		attention = TimeDistributed(Dense(1, activation='tanh'))(rnn) 
+		print("TimeDistributed :", attention.shape)
+
+		# Apply Attention
+		attention = Flatten()(attention)
+		attention = Activation('softmax')(attention)
+		attention = RepeatVector(config["LSTM_SIZE"]*2)(attention)
+		attention = Permute([2, 1])(attention)	
+		sent_representation = multiply([rnn, attention])
+		
+		flat = Flatten()(sent_representation)
+		"""
+	
+		# -------------
+		# DROPOUT LAYER
+		# -------------
+		#dropout = Dropout(config["DROPOUT_VAL"])(flat)
 
 		# -----------------
 		# FINAL DENSE LAYER
 		# -----------------
-		output = Dense(output_size, activation='softmax')(rnn) #, kernel_regularizer=regularizers.l1(0.05)
+		output = Dense(output_size, activation='softmax')(rnn2) #, kernel_regularizer=regularizers.l1(0.05)
 
 		print("output :", output.shape)
 

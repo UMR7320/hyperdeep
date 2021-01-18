@@ -12,6 +12,7 @@ import pickle
 import re
 import os
 
+from nltk import FreqDist
 from gensim.models import Word2Vec
 from keras.utils import np_utils
 from keras.preprocessing.text import hashing_trick
@@ -49,10 +50,16 @@ class Filtering:
 			cpt += 1
 			# --------------------------------
 			# FILTERING
-			args = line.split("\t")
+			args = line.strip().split("\t")
 			try:
-				if any(s in args[1] for s in ["NOM", "NAM", "ADJ", "VER"]) and "<unknown>" not in args[2]:
-					self.text += [args[2].strip()]
+				#if any(s in args[1] for s in ["NOM", "NAM", "ADJ", "VER"]) and "<unknown>" not in args[2]:
+				#self.text += [args[0].strip()]
+
+				if args[0] == "__PARA__":
+					self.text += ["\n"]
+				else:
+					self.text += [args[0]]
+
 			except:
 				pass
 			# --------------------------------
@@ -75,6 +82,11 @@ class Filtering:
 		#print(list(vectors.vocab)[:10])
 		# --------------------------------
 		"""
+
+		# Keep only most frequent words
+		freqDist = FreqDist(self.text)
+		most_commont_list = [entry[0] for entry in freqDist.most_common(3000)]
+		self.text = [word for word in self.text if word in most_commont_list]
 
 		# Get word index
 		self.unique_words = np.unique(self.text)
@@ -106,7 +118,7 @@ class Filtering:
 
 		# Load text
 		f = open(test_file, "r")
-		text = f.read()
+		self.X_test = f.read()
 
 		# Load index
 		self.unique_word_index = pickle.load(open(self.model_file + ".index", "rb" ))
@@ -115,8 +127,11 @@ class Filtering:
 
 		# compute x_test
 		self.X = np.zeros((1, WORD_LENGTH, len(self.unique_word_index.keys())), dtype=bool)
-		text = text.strip().split(" ") + concate
+		text = self.X_test.strip().split(" ") + concate
 		text = text[-WORD_LENGTH:]
 		for j, each_word in enumerate(text):
-			self.X[0, j, self.unique_word_index[each_word]] = 1
+			try:
+				self.X[0, j, self.unique_word_index[each_word]] = 1
+			except:
+				self.X[0, j, 0] = 1
 
