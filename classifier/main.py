@@ -54,6 +54,7 @@ def train(corpus_file, model_file, config):
 	
 	# Establish params
 	config["num_classes"] = preprocessing.num_classes 
+	config["nb_channels"] = preprocessing.nb_channels
 	config["vocab_size"] = []
 	for dictionary in preprocessing.dictionaries:
 		config["vocab_size"] += [len(dictionary["word_index"])]
@@ -99,7 +100,7 @@ def train(corpus_file, model_file, config):
 		x_entry.append(entry)
 		x_data += [np.array(x_entry)]
 	
-	if not config["TG"]:
+	if preprocessing.nb_channels == 1:
 		embedding = embedding_model.predict(x_data[0])
 	else:
 		embedding = embedding_model.predict(x_data)
@@ -114,12 +115,12 @@ def train(corpus_file, model_file, config):
 		# READ SENTENCE WORD BY WORD
 		for i in range(config["SEQUENCE_SIZE"]):
 			# READ EACH CHANNEL
-			for channel in range(len(x_data)):
+			for channel in range(preprocessing.nb_channels):
 				index = x_data[channel][sentence_nb][i]
 				word = preprocessing.dictionaries[channel]["index_word"].get(index, "PAD")
 
 				# MUTLI CHANNEL
-				if config["TG"]:
+				if preprocessing.nb_channels > 1:
 					wordvector = embedding[channel][sentence_nb][i]
 
 				# ONE CHANNEL

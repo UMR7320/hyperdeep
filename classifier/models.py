@@ -42,10 +42,7 @@ class Classifier:
 		# ---------------------------------------
 		# MULTI CHANNELS CONVOLUTION
 		# ---------------------------------------
-		if config["TG"]:
-			nb_channels = 3
-		else:
-			nb_channels = 1
+		nb_channels = config["nb_channels"]
 
 		inputs = [0]*nb_channels
 		embedding = [0]*nb_channels
@@ -107,12 +104,12 @@ class Classifier:
 		# APPLY THE MULTI CHANNELS ABSTRACTION
 		# ------------------------------------
 		if config["ENABLE_CONV"]:
-			if config["TG"]:
-				merged = concatenate([conv[0],conv[1],conv[2]])
+			if  nb_channels > 1:
+				merged = concatenate(conv)
 			else:
 				merged = conv[0]
 		else:
-			if config["TG"]:
+			if nb_channels > 1:
 				merged = concatenate(embedding)
 			else:
 				merged = embedding[0]

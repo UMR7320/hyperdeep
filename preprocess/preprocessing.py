@@ -28,6 +28,23 @@ class PreProcessing:
 	def loadData(self, corpus_file, model_file, config, getLabels, createDictionary):   
 		
 		print("loading data...")
+
+
+		# ------------------------
+		# GET NUMBER OF CHANNELS
+		# OLD WAY => DEPRECATED
+		if isinstance(config["TG"], int):
+			if config["TG"] > 0:
+				self.nb_channels = 3
+			else:
+				self.nb_channels = 1
+
+		# NEW WAY
+		else:		
+			self.nb_channels = config["TG"].count(1)
+		# ------------------------
+
+		print("NB CHANNELS:", self.nb_channels)
 		
 		f = open(corpus_file, "r")
 		lines = f.readlines()
@@ -56,10 +73,10 @@ class PreProcessing:
 				line = line.replace("__" + label + "__ ", "")
 
 			# TEXT
-			if config["TG"]:
-				sequence = ["", "", ""] # MULTICHANNELS
-			else:
-				sequence = [""] # MONOCHANNEL
+			sequence = []
+			for i in range(self.nb_channels):
+				sequence += [""]
+
 			for token in line.split():
 				self.raw_text += [token]
 				args = token.split("**")
@@ -120,7 +137,6 @@ class PreProcessing:
 			self.x_train += [data[nb_testing_samples:]]
 
 		self.dictionaries = dictionaries
-		self.nb_channels = len(texts.keys())
 
 	# ----------------------------------------
 	# Load existing embedding
@@ -179,53 +195,31 @@ class PreProcessing:
 				dictionaries = pickle.load(handle)
 		datas = []		
 
-		type = ["FORME", "CODE", "LEM"]
-		text_formes = texts[0]
-		if config["TG"]:
-			text_codes = texts[1]
-		else:
-			text_codes = False
-
 		for channel, text in texts.items():
 			datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
 
 			line_number = 0
 			for i, line in enumerate(text):
-				words = line.split()[:config["SEQUENCE_SIZE"]]
 				
-				words_formes = text_formes[i].split()[:config["SEQUENCE_SIZE"]]
-				try:
-					words_codes =  text_codes[i].split()[:config["SEQUENCE_SIZE"]]
-				except:
-					words_codes = False
-
+				words = line.split()[:config["SEQUENCE_SIZE"]]
 				sentence_length = len(words)
-
 				sentence = []
+
 				for j, word in enumerate(words):
 					if word not in dictionaries[channel]["word_index"].keys():
 						if createDictionary:
-							# IF WORD IS SKIPED THEN ADD "UK" word
+							# ----------------------------
+							# SKIP WORDS
 							skip_word = False
-							if channel != 1:
-								for f in config["FILTERS"]:
-									if not f.strip(): continue
-									# Check Code
-									skip_word = skip_word or f in words_codes[j].split(":")
-									# Check Forme (regex)
-									skip_word = skip_word or re.match(f, word)
-									# Check Length
-									if "min(" in f:
-										f = f.replace("min(", "")[:-1]
-										skip_word = skip_word or len(word) < int(f)
-									elif "max(" in f:
-										f = f.replace("max(", "")[:-1]
-										skip_word = skip_word or len(word) > int(f)
-									if skip_word:
-										break
-
+							for f in config["FILTERS"]:
+								if not f.strip(): continue
+								if any(re.match(f, texts[t][i][j]) for t in range(self.nb_channels)):
+									skip_word = True
+									break
 							if skip_word: 
 								dictionaries[channel]["word_index"][word] = dictionary["word_index"]["__UK__"]
+							# ----------------------------
+
 							else:	 
 								indexes[channel] += 1
 								dictionaries[channel]["word_index"][word] = indexes[channel]
