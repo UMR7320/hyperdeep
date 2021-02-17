@@ -84,13 +84,11 @@ class Filtering:
 		"""
 
 		# Keep only most frequent words
-		"""
 		freqDist = FreqDist(self.text)
-		most_commont_list = [entry[0] for entry in freqDist.most_common(3000)]
+		most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
 		self.text = [word for word in self.text if word in most_commont_list]
-		"""
+	
 		# Get word index
-
 		self.unique_words = np.unique(self.text)
 		self.unique_word_index = dict((c, i) for i, c in enumerate(self.unique_words))
 		pickle.dump(self.unique_word_index, open(self.model_file + ".index", "wb"))

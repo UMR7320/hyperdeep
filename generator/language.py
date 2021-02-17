@@ -42,7 +42,7 @@ class Language:
 		# ----------
 		# LSTM LAYER
 		# ----------
-		rnn=LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
+		rnn=Bidirectional(LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"]))(inputs)
 
 		# ---------------
 		# ATTENTION LAYER
@@ -54,7 +54,7 @@ class Language:
 		# Apply Attention
 		attention = Flatten()(attention)
 		attention = Activation('softmax')(attention)
-		attention = RepeatVector(config["LSTM_SIZE"])(attention)
+		attention = RepeatVector(config["LSTM_SIZE"]*2)(attention)
 		attention = Permute([2, 1])(attention)	
 		sent_representation = multiply([rnn, attention])
 		

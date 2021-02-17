@@ -25,7 +25,7 @@ from termcolor import colored
 
 config = {}
 
-config["WORD_LENGTH"] = 5
+config["WORD_LENGTH"] = 8
 config["EMBEDDING_SIZE"] = 300
 config["LSTM_SIZE"] = 256
 config["LEARNING_RATE"] = 0.001
@@ -88,7 +88,7 @@ def generate(model_file, text_file):
 
 	system("clear");
 	preprocessing.loadTest(text_file, config, concate)
-	print(colored(preprocessing.X_test, 'red'), end=' ', flush=True)
+	print(colored(preprocessing.X_test, 'cyan'), end=' ', flush=True)
 
 	for i in range(200):
 
@@ -123,9 +123,9 @@ def generate(model_file, text_file):
 
 		try:
 			if spec[prediction]["z"] < 1:
-				give_a_chance = [1, 10]
+				give_a_chance = [1, 50]
 			else:
-				give_a_chance = [int(spec[prediction]["z"]), 10]
+				give_a_chance = [int(spec[prediction]["z"]), 50]
 		except:
 			give_a_chance = [5, 5]
 
@@ -137,9 +137,9 @@ def generate(model_file, text_file):
 		# NGRAM
 		cond1 = (current_text[-2], current_text[-1], prediction) not in myNgrams
 		# AVOID LOOP
-		cond2 = prediction in current_text 
+		cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
 
-		while ttl < 300 and (cond1 or cond2):
+		while ttl < 100 and (cond1 or cond2):
 			
 			#predictions[max_pred] = -1
 			#max_pred = predictions.index(max(predictions))	
@@ -151,21 +151,28 @@ def generate(model_file, text_file):
 			prediction = preprocessing.unique_index_word[max_pred]
 			
 			ttl += 1
+			try:
+				if spec[prediction]["z"] < 1:
+					give_a_chance = [1, 50]
+				else:
+					give_a_chance = [int(spec[prediction]["z"]), 50]
+			except:
+				give_a_chance = [5, 5]
 			# NGRAM
 			cond1 = (current_text[-2], current_text[-1], prediction) not in myNgrams
 			# AVOID LOOP
-			cond2 = prediction in current_text
+			cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
 
 		# ----------------------------------------------------
 
-		if ttl == 300:
+		if ttl == 100:
 			for gram in textGram:
 				if current_text[-2] == gram[0] and current_text[-1] == gram[1]:
 					prediction = gram
 					break
 			concate = concate[:-2] + list(prediction)
 			for word in prediction[2:]:
-				print(colored(word, 'red'), end=' ', flush=True)
+				print(colored(word, 'cyan'), end=' ', flush=True)
 		else:
 			print(prediction, end=' ', flush=True)
 			concate += [prediction]
