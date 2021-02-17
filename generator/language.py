@@ -42,37 +42,33 @@ class Language:
 		# ----------
 		# LSTM LAYER
 		# ----------
-		rnn1 =LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
-
-
-		rnn2 =LSTM(config["LSTM_SIZE"], return_sequences=False, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn1)
+		rnn=LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
 
 		# ---------------
 		# ATTENTION LAYER
 		# ---------------
-		"""
+		
 		attention = TimeDistributed(Dense(1, activation='tanh'))(rnn) 
 		print("TimeDistributed :", attention.shape)
 
 		# Apply Attention
 		attention = Flatten()(attention)
 		attention = Activation('softmax')(attention)
-		attention = RepeatVector(config["LSTM_SIZE"]*2)(attention)
+		attention = RepeatVector(config["LSTM_SIZE"])(attention)
 		attention = Permute([2, 1])(attention)	
 		sent_representation = multiply([rnn, attention])
 		
 		flat = Flatten()(sent_representation)
-		"""
 	
 		# -------------
 		# DROPOUT LAYER
 		# -------------
-		#dropout = Dropout(config["DROPOUT_VAL"])(flat)
+		dropout = Dropout(config["DROPOUT_VAL"])(flat)
 
 		# -----------------
 		# FINAL DENSE LAYER
 		# -----------------
-		output = Dense(output_size, activation='softmax')(rnn2) #, kernel_regularizer=regularizers.l1(0.05)
+		output = Dense(output_size, activation='softmax')(dropout) #, kernel_regularizer=regularizers.l1(0.05)
 
 		print("output :", output.shape)
 

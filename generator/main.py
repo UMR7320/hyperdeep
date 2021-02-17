@@ -19,10 +19,13 @@ from preprocess.filtering import Filtering
 from generator.language import Language
 
 import nltk
+import pickle
+from os import system
+from termcolor import colored
 
 config = {}
 
-config["WORD_LENGTH"] = 10
+config["WORD_LENGTH"] = 5
 config["EMBEDDING_SIZE"] = 300
 config["LSTM_SIZE"] = 256
 config["LEARNING_RATE"] = 0.001
@@ -72,31 +75,36 @@ def generate(model_file, text_file):
 	# Get spec
 	spec = json.loads(open(model_file + ".spec", "r").read())
 	vocab = list(spec.keys())
+	
 	myNgrams = list(nltk.ngrams(preprocessing.text, 3))
-	#freq_bi = nltk.FreqDist(myBigrams)
+	textGram =  list(nltk.ngrams(preprocessing.text, config["WORD_LENGTH"]))
+
+	#freq_bi = nltk.FreqDist(myNgrams)
 	#print(freq_bi.most_common(20))
 
 	model = load_model(model_file+".lang")
 	text = ""
 	concate = []
-	for i in range(100):
+
+	system("clear");
+	preprocessing.loadTest(text_file, config, concate)
+	for word in preprocessing.X_test.split(" "):
+		print(colored(word, 'red'), end=' ', flush=True)
+
+	for i in range(200):
 
 		# Get next predicted word
 		preprocessing.loadTest(text_file, config, concate)
 		predictions = list(model.predict(preprocessing.X)[0])
 		max_pred = predictions.index(max(predictions))
-		#weighted_predictions = [p*10000 for p in predictions]
+		weighted_predictions = [p*10000 for p in predictions]
 		#max_pred = random.choices(range(len(weighted_predictions)), weights=weighted_predictions, k=1)[0]
 		prediction = preprocessing.unique_index_word[max_pred]
-		
-		#if len(concate) <= 5:
-		#	print(prediction)
 	    
 	    # ----------------------------------------------------		
 		# Adjust prediction
-		if len(concate) > config["WORD_LENGTH"]:
-
-			"""
+		#if len(concate) > config["WORD_LENGTH"]:
+		"""
 			try:
 				pred_count = concate.count(prediction)+1
 				k = spec[prediction]["k"] + pred_count
@@ -110,48 +118,61 @@ def generate(model_file, text_file):
 			except:
 				delta = 0
 
-			#if delta != 0:
-				print(prediction, delta)
-			"""
+			if delta != 0:
+			print(prediction, delta)
+		"""
 
-			try:
-				while (concate[-2], concate[-1], prediction) not in myNgrams or prediction == concate[-1]:
-					
-					#predictions[max_pred] = -1
-					max_pred = predictions.index(max(predictions))	
-					#max_pred = random.choices(range(len(weighted_predictions)), weights=weighted_predictions, k=1)[0]
-					prediction = preprocessing.unique_index_word[max_pred]
+		try:
+			if spec[prediction]["z"] < 0:
+				give_a_chance = [spec[prediction]["z"], 5]
+			else:
+				give_a_chance = [spec[prediction]["z"], 5]
+		except:
+			give_a_chance = [5, 5]
 
-					"""
-					try:
-						pred_count = concate.count(prediction)+1
-						k = spec[prediction]["k"] + pred_count
-						f = spec[prediction]["f"] + pred_count
-						t = spec[vocab[0]]["t"] + len(concate)+1
-						T = spec[vocab[0]]["T"] + len(concate)+1
-						z1 = z_score(spec[prediction]["k"], spec[prediction]["f"], spec[vocab[0]]["t"], spec[vocab[0]]["T"])
-						z2 = z_score(k, f, t, T)
-						delta = z1 - z2
-					except:
-						delta = 0
-					"""
-					# print("\t", prediction, delta)
-			except:
-				pass
+		current_text = preprocessing.X_test.strip().split(" ") + concate
+		ttl = 0
+		
+		# CONDITIONS :
+		# ------------
+		# NGRAM
+		cond1 = (current_text[-2], current_text[-1], prediction) not in myNgrams
+		# AVOID LOOP
+		cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
+
+		while ttl < 300 and (cond1 or cond2):
+			
+			#predictions[max_pred] = -1
+			#max_pred = predictions.index(max(predictions))	
+			if cond1:
+				predictions[max_pred] = -1
+				max_pred = predictions.index(max(predictions))
+			else:
+				max_pred = random.choices(range(len(weighted_predictions)), weights=weighted_predictions, k=1)[0]
+			prediction = preprocessing.unique_index_word[max_pred]
+			
+			ttl += 1
+			# NGRAM
+			cond1 = (current_text[-2], current_text[-1], prediction) not in myNgrams
+			# AVOID LOOP
+			cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
 
 		# ----------------------------------------------------
-		concate += [prediction]
-		print(concate)
-		
-		if concate[-(config["WORD_LENGTH"]-1):] == concate[-(config["WORD_LENGTH"]-1)*2:-(config["WORD_LENGTH"]-1)]:
-			print("repeat:", concate[-(config["WORD_LENGTH"]-1):])
-			concate = concate[:-(config["WORD_LENGTH"]-1)]
-			for j in range(len(preprocessing.text)):
-				if preprocessing.text[j:j+3] == concate[-3:]:
-					print("replace with:", preprocessing.text[j+3:j+3+config["WORD_LENGTH"]])
-					concate += preprocessing.text[j+3:j+3+config["WORD_LENGTH"]]
-					print(concate)
-					break
 
-	print("-"*50)
-	print(preprocessing.X_test.strip() + " " + " ".join(concate))
+		if ttl == 300:
+			for gram in textGram:
+				if current_text[-2] == gram[0] and current_text[-1] == gram[1]:
+					prediction = gram
+					break
+			concate = concate[:-2] + list(prediction)
+			for word in prediction[2:]:
+				print(colored(word, 'red'), end=' ', flush=True)
+		else:
+			print(prediction, end=' ', flush=True)
+			concate += [prediction]
+
+	print("\n")
+	#print(""-"*50")
+	#print(preprocessing.X_test.strip() + " " + " ".join(concate))
+
+	return concate
