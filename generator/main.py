@@ -88,8 +88,7 @@ def generate(model_file, text_file):
 
 	system("clear");
 	preprocessing.loadTest(text_file, config, concate)
-	for word in preprocessing.X_test.split(" "):
-		print(colored(word, 'red'), end=' ', flush=True)
+	print(colored(preprocessing.X_test, 'red'), end=' ', flush=True)
 
 	for i in range(200):
 
@@ -123,10 +122,10 @@ def generate(model_file, text_file):
 		"""
 
 		try:
-			if spec[prediction]["z"] < 0:
-				give_a_chance = [spec[prediction]["z"], 5]
+			if spec[prediction]["z"] < 1:
+				give_a_chance = [1, 10]
 			else:
-				give_a_chance = [spec[prediction]["z"], 5]
+				give_a_chance = [int(spec[prediction]["z"]), 10]
 		except:
 			give_a_chance = [5, 5]
 
@@ -138,7 +137,7 @@ def generate(model_file, text_file):
 		# NGRAM
 		cond1 = (current_text[-2], current_text[-1], prediction) not in myNgrams
 		# AVOID LOOP
-		cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
+		cond2 = prediction in current_text 
 
 		while ttl < 300 and (cond1 or cond2):
 			
@@ -155,7 +154,7 @@ def generate(model_file, text_file):
 			# NGRAM
 			cond1 = (current_text[-2], current_text[-1], prediction) not in myNgrams
 			# AVOID LOOP
-			cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
+			cond2 = prediction in current_text
 
 		# ----------------------------------------------------
 
@@ -175,4 +174,4 @@ def generate(model_file, text_file):
 	#print(""-"*50")
 	#print(preprocessing.X_test.strip() + " " + " ".join(concate))
 
-	return concate
+	return preprocessing.X_test.strip() + " " + " ".join(concate)

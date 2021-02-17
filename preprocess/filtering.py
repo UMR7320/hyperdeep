@@ -90,6 +90,7 @@ class Filtering:
 		self.text = [word for word in self.text if word in most_commont_list]
 		"""
 		# Get word index
+
 		self.unique_words = np.unique(self.text)
 		self.unique_word_index = dict((c, i) for i, c in enumerate(self.unique_words))
 		pickle.dump(self.unique_word_index, open(self.model_file + ".index", "wb"))
@@ -101,8 +102,6 @@ class Filtering:
 		for i in range(len(self.text) - WORD_LENGTH):
 			prev_words.append(self.text[i:i + WORD_LENGTH])
 			next_words.append(self.text[i + WORD_LENGTH])
-		print(prev_words[0])
-		print(next_words[0])
 
 		# create two numpy arrays x for storing the features and y for storing its corresponding label
 		self.X = np.zeros((len(prev_words), WORD_LENGTH, len(self.unique_words)), dtype=bool)
