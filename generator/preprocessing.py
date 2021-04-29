@@ -98,7 +98,7 @@ class PreProcessing:
 		pickle.dump(self.dictionary, open(self.model_file + ".index", "wb"))
 
 		# FILTER CORPUS
-		WORD_LENGTH = 
+		WORD_LENGTH = config["WORD_LENGTH"]
 		prev_words = []
 		next_words = []
 		for i in range(len(self.text) - WORD_LENGTH):
