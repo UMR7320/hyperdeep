@@ -64,7 +64,7 @@ class PreProcessing:
 			cpt += 1
 			# --------------------------------
 			# TOKENIZE
-			self.text += line.strip().split(" ")
+			self.text += line.strip().split(" ") + ["\n"]
 			# --------------------------------
 
 		"""
