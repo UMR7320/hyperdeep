@@ -89,7 +89,7 @@ class PreProcessing:
 		# --------------------------------
 		# Keep only most frequent words
 		freqDist = FreqDist(self.text)
-		most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
+		most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
 		#self.text = [word for word in self.text if word in most_commont_list]
 
 		# Create a new dictionary
@@ -98,7 +98,7 @@ class PreProcessing:
 		pickle.dump(self.dictionary, open(self.model_file + ".index", "wb"))
 
 		# FILTER CORPUS
-		WORD_LENGTH = config["WORD_LENGTH"]
+		WORD_LENGTH = 
 		prev_words = []
 		next_words = []
 		for i in range(len(self.text) - WORD_LENGTH):
