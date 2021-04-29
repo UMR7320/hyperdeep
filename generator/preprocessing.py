@@ -86,29 +86,32 @@ class PreProcessing:
 		# --------------------------------
 		"""
 
+		# --------------------------------
 		# Keep only most frequent words
-		#freqDist = FreqDist(self.text)
-		#most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
+		freqDist = FreqDist(self.text)
+		most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
 		#self.text = [word for word in self.text if word in most_commont_list]
+
+		# Create a new dictionary
+		self.dictionary = dict((c, i) for i, c in enumerate(most_commont_list))
+		self.sizeOfdictionary = len(self.dictionary.keys())
+		pickle.dump(self.dictionary, open(self.model_file + ".index", "wb"))
+
+		# FILTER CORPUS
+		WORD_LENGTH = config["WORD_LENGTH"]
+		prev_words = []
+		next_words = []
+		for i in range(len(self.text) - WORD_LENGTH):
+			if any(w not in most_commont_list for w in self.text[i:i + WORD_LENGTH + 1]) : continue
+			prev_words.append(self.text[i:i + WORD_LENGTH])
+			next_words.append(self.text[i + WORD_LENGTH])
+		print("NUMBER OF SAMPLE:", len(next_words))
 
 		# COMPUTE NGRAM
 		self.sgrams = list(ngrams(self.text, 3))
 		pickle.dump(self.sgrams, open(self.model_file + ".sgram", "wb"))
 		self.lgrams =  list(ngrams(self.text, config["WORD_LENGTH"]))
 		pickle.dump(self.lgrams, open(self.model_file + ".lgram", "wb"))
-	
-		# Create a new dictionary
-		self.dictionary = dict((c, i) for i, c in enumerate(np.unique(self.text)))
-		self.sizeOfdictionary = len(self.dictionary.keys())
-		pickle.dump(self.dictionary, open(self.model_file + ".index", "wb"))
-
-		# Feature Engineering
-		WORD_LENGTH = config["WORD_LENGTH"]
-		prev_words = []
-		next_words = []
-		for i in range(0, len(self.text) - WORD_LENGTH, WORD_LENGTH):
-			prev_words.append(self.text[i:i + WORD_LENGTH])
-			next_words.append(self.text[i + WORD_LENGTH])
 
 		# create two numpy arrays x for storing the features and y for storing its corresponding label
 		self.X = np.zeros((len(prev_words), WORD_LENGTH, self.sizeOfdictionary), dtype=bool)
