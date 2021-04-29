@@ -13,6 +13,12 @@ import os
 from generator.train import train_model
 from generator.predict import generate
 
+# ------------------------------------------
+# Force to use CPU (no need GPU on predict)
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# ------------------------------------------
+
 print("LOAD DEPENDENCIES DONE.")
 
 # -----------------------------------
@@ -26,7 +32,7 @@ config["DENSE_LAYER_SIZE"] = 1000 #1000
 config["DROPOUT_VAL"] = 0.2
 
 config["BACH_SIZE"] = 1024 # 1024
-config["NUM_EPOCHS"] = 3
+config["NUM_EPOCHS"] = 10
 config["VALIDATION_SPLIT"] = 0.05
 
 # -----------------------------------
