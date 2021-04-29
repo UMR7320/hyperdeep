@@ -10,7 +10,6 @@ import json
 
 from classifier.main import train, predict
 from preprocess.w2vec import create_vectors, get_most_similar
-import tensorflow as tf
 
 def print_help():
     print("usage: python hyperdeep.py <command> <args>\n")
@@ -33,6 +32,7 @@ def get_args():
     return args
 
 if __name__ == '__main__':
+    print()
 
     # GET COMMAND
     try:

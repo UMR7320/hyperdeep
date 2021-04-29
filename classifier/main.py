@@ -16,7 +16,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
 from tensorflow.keras.models import Model
 
-from preprocess.preprocessing import PreProcessing
+from classifier.preprocessing import PreProcessing
 from classifier.models import Classifier
 from analyzer.lime import LimeExplainer
 

@@ -12,23 +12,36 @@ import pickle
 import re
 import os
 
+from nltk import ngrams
 from nltk import FreqDist
-from gensim.models import Word2Vec
-from keras.utils import np_utils
-from keras.preprocessing.text import hashing_trick
 
 # ----------------------------------------
 # Filter datas
 # ----------------------------------------
-class Filtering:
+class PreProcessing:
 
 	def __init__(self, model_file):
 		self.model_file = model_file
+		try:
+			with open(model_file + ".index", 'rb') as handle:
+				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
+				self.dictionary = pickle.load(handle)
+				self.sizeOfdictionary = len(self.dictionary.keys())
+
+			with open(model_file + ".sgram", 'rb') as handle:
+				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
+				self.sgram = pickle.load(handle)
+
+			with open(model_file + ".lgram", 'rb') as handle:
+				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
+				self.lgram = pickle.load(handle)
+		except:
+			print("NO DICTIONARY DETECTED")
 
 	# ----------------------------------------
 	# Load data from file
 	# ----------------------------------------
-	def loadData(self, corpus_file, config):   
+	def loadCorpus(self, corpus_file, config):   
 
 		f = open(corpus_file, "r")
 		lines = f.readlines()
@@ -41,6 +54,7 @@ class Filtering:
 		# --------------------------------
 
 		for line in lines:
+			if "*" in line: continue
 			# --------------------------------
 			# LOG
 			if cpt%1000 == 0:
@@ -49,19 +63,8 @@ class Filtering:
 				t0 = t1
 			cpt += 1
 			# --------------------------------
-			# FILTERING
-			args = line.strip().split("\t")
-			try:
-				#if any(s in args[1] for s in ["NOM", "NAM", "ADJ", "VER"]) and "<unknown>" not in args[2]:
-				#self.text += [args[0].strip()]
-
-				if args[0] == "__PARA__":
-					self.text += ["\n"]
-				else:
-					self.text += [args[0]]
-
-			except:
-				pass
+			# TOKENIZE
+			self.text += line.strip().split(" ")
 			# --------------------------------
 
 		"""
@@ -87,11 +90,17 @@ class Filtering:
 		freqDist = FreqDist(self.text)
 		most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
 		self.text = [word for word in self.text if word in most_commont_list]
+
+		# COMPUTE NGRAM
+		self.sgrams = list(ngrams(self.text, 3))
+		pickle.dump(self.sgrams, open(self.model_file + ".sgram", "wb"))
+		self.lgrams =  list(ngrams(self.text, config["WORD_LENGTH"]))
+		pickle.dump(self.lgrams, open(self.model_file + ".lgram", "wb"))
 	
-		# Get word index
-		self.unique_words = np.unique(self.text)
-		self.unique_word_index = dict((c, i) for i, c in enumerate(self.unique_words))
-		pickle.dump(self.unique_word_index, open(self.model_file + ".index", "wb"))
+		# Create a new dictionary
+		self.dictionary = dict((c, i) for i, c in enumerate(np.unique(self.text)))
+		self.sizeOfdictionary = len(self.dictionary.keys())
+		pickle.dump(self.dictionary, open(self.model_file + ".index", "wb"))
 
 		# Feature Engineering
 		WORD_LENGTH = config["WORD_LENGTH"]
@@ -102,34 +111,34 @@ class Filtering:
 			next_words.append(self.text[i + WORD_LENGTH])
 
 		# create two numpy arrays x for storing the features and y for storing its corresponding label
-		self.X = np.zeros((len(prev_words), WORD_LENGTH, len(self.unique_words)), dtype=bool)
-		self.Y = np.zeros((len(next_words), len(self.unique_words)), dtype=bool)
+		self.X = np.zeros((len(prev_words), WORD_LENGTH, self.sizeOfdictionary), dtype=bool)
+		self.Y = np.zeros((len(next_words), self.sizeOfdictionary), dtype=bool)
 		for i, each_words in enumerate(prev_words):
 			for j, each_word in enumerate(each_words):
-				self.X[i, j, self.unique_word_index[each_word]] = 1
-			self.Y[i, self.unique_word_index[next_words[i]]] = 1
+				self.X[i, j, self.dictionary[each_word]] = 1
+			self.Y[i, self.dictionary[next_words[i]]] = 1
 
 	# ----------------------------------------
-	# Load Test from file
+	# Load bootstrap from file
 	# ----------------------------------------
-	def loadTest(self, test_file, config, concate=[]):   
+	def loadBootstrap(self, test_file, config, concate=[]):   
 
 		# Load text
 		f = open(test_file, "r")
-		self.X_test = f.read()
+		self.X_bootstrap = f.read()
 
 		# Load index
-		self.unique_word_index = pickle.load(open(self.model_file + ".index", "rb" ))
-		self.unique_index_word = {v: k for k, v in self.unique_word_index.items()}
+		self.dictionary = pickle.load(open(self.model_file + ".index", "rb" ))
+		self.reversedictionary = {v: k for k, v in self.dictionary.items()}
 		WORD_LENGTH = config["WORD_LENGTH"]
 
-		# compute x_test
-		self.X = np.zeros((1, WORD_LENGTH, len(self.unique_word_index.keys())), dtype=bool)
-		text = self.X_test.strip().split(" ") + concate
+		# compute X_bootstrap
+		self.X = np.zeros((1, WORD_LENGTH, len(self.dictionary.keys())), dtype=bool)
+		text = self.X_bootstrap.strip().split(" ") + concate
 		text = text[-WORD_LENGTH:]
 		for j, each_word in enumerate(text):
 			try:
-				self.X[0, j, self.unique_word_index[each_word]] = 1
+				self.X[0, j, self.dictionary[each_word]] = 1
 			except:
 				self.X[0, j, 0] = 1
 

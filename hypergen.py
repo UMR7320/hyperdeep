@@ -6,10 +6,30 @@ Created on 20 dec. 2020
 
 t.vanni@unice.fr
 '''
+print("LOAD DEPENDENCIES...")
 
 import sys
 import os
-from generator.main import train, generate
+from generator.train import train_model
+from generator.predict import generate
+
+print("LOAD DEPENDENCIES DONE.")
+
+# -----------------------------------
+# FOR TESTING
+config = {}
+config["WORD_LENGTH"] = 8
+config["EMBEDDING_SIZE"] = 300 #300
+config["LSTM_SIZE"] = 256 #256
+config["LEARNING_RATE"] = 0.001
+config["DENSE_LAYER_SIZE"] = 1000 #1000
+config["DROPOUT_VAL"] = 0.2
+
+config["BACH_SIZE"] = 1024 # 1024
+config["NUM_EPOCHS"] = 3
+config["VALIDATION_SPLIT"] = 0.05
+
+# -----------------------------------
 
 def print_help():
     print("usage: python hypergen.py <command> <args>\n")
@@ -51,7 +71,7 @@ if __name__ == '__main__':
             #spec = json.loads(open(corpus_file + ".spec", "r").read())
 
             # TRAIN
-            train(corpus_file, model_file)
+            train_model(corpus_file, model_file, config)
 
         except:
             raise
@@ -67,7 +87,8 @@ if __name__ == '__main__':
             args = get_args()
             model_file = args[2]
             text_file = args[3]
-            new_text = generate(model_file, text_file)
+            log_file = args[4]
+            new_text = generate(model_file, text_file, log_file, config)
 
             # save predictions in a file
             result_path = "results/" + os.path.basename(text_file) + ".res"
