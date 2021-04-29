@@ -87,9 +87,9 @@ class PreProcessing:
 		"""
 
 		# Keep only most frequent words
-		freqDist = FreqDist(self.text)
-		most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
-		self.text = [word for word in self.text if word in most_commont_list]
+		#freqDist = FreqDist(self.text)
+		#most_commont_list = [entry[0] for entry in freqDist.most_common(10000)]
+		#self.text = [word for word in self.text if word in most_commont_list]
 
 		# COMPUTE NGRAM
 		self.sgrams = list(ngrams(self.text, 3))
@@ -106,7 +106,7 @@ class PreProcessing:
 		WORD_LENGTH = config["WORD_LENGTH"]
 		prev_words = []
 		next_words = []
-		for i in range(len(self.text) - WORD_LENGTH):
+		for i in range(0, len(self.text) - WORD_LENGTH, WORD_LENGTH):
 			prev_words.append(self.text[i:i + WORD_LENGTH])
 			next_words.append(self.text[i + WORD_LENGTH])
 
