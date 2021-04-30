@@ -27,12 +27,17 @@ def generate(model_file, text_file, log_file, config):
 
 	# GET PREPROCESSING
 	preprocessing = PreProcessing(model_file)
+	print("PREPROCESSING DONE.")
 
 	# LOG FILE (update results)
-	log_data = json.load(open(log_file, "r"))
+	try:
+		log_data = json.load(open(log_file, "r"))
+	except:
+		log_data = {}
 	log_data["message"]  = "__GEN__"
 
 	# Get spec
+	print("LOAD SPEC")
 	spec = json.loads(open(model_file + ".spec", "r").read())
 	vocab = list(spec.keys())
 
@@ -137,7 +142,10 @@ def generate(model_file, text_file, log_file, config):
 			concate += [prediction]
 
 		# WRITE CURRENT TEXT IN A LOG FILE
-		open(log_file, "w").write(json.dumps(log_data))
+		try:
+			open(log_file, "w").write(json.dumps(log_data))
+		except:
+			pass
 
 	print("\n")
 	#print(""-"*50")

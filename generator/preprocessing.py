@@ -15,6 +15,9 @@ import os
 from nltk import ngrams
 from nltk import FreqDist
 
+print("IMPORT SPACY")
+import spacy
+
 # ----------------------------------------
 # Filter datas
 # ----------------------------------------
@@ -46,26 +49,23 @@ class PreProcessing:
 		f = open(corpus_file, "r")
 		lines = f.readlines()
 
-		self.text = [] 
-		# --------------------------------
-		# LOG
-		cpt = 0
-		t0 = time.time()
-		# --------------------------------
+		print("SPACY LOAD")
+		nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
+		print("SPACY ANALYSE")
+		docs = list(nlp.pipe(lines, n_process=-1, batch_size=8))
+		print("SPACY DONE.")
 
-		for line in lines:
-			if "*" in line: continue
-			# --------------------------------
-			# LOG
-			if cpt%1000 == 0:
-				t1 = time.time()
-				#print("words:", cpt, "/", len(lines))
-				t0 = t1
-			cpt += 1
-			# --------------------------------
-			# TOKENIZE
-			self.text += line.strip().split(" ") + ["\n"]
-			# --------------------------------
+		self.text = [] 
+		self.pos = []
+
+		for doc in docs:
+			for token in doc:
+				# TOKENIZE
+				self.text += [token.text]
+				self.pos += [token.tag_]
+
+			self.text += ["\n"]
+			self.pos += ["\n"]
 
 		"""
 		# --------------------------------
@@ -103,9 +103,11 @@ class PreProcessing:
 		next_words = []
 		for i in range(len(self.text) - WORD_LENGTH):
 			if any(w not in most_commont_list for w in self.text[i:i + WORD_LENGTH + 1]) : continue
+			if self.text[i:i + WORD_LENGTH + 1].count("\n") > 1 : continue
 			prev_words.append(self.text[i:i + WORD_LENGTH])
 			next_words.append(self.text[i + WORD_LENGTH])
 		print("NUMBER OF SAMPLE:", len(next_words))
+		print(prev_words[:10])
 
 		# COMPUTE NGRAM
 		self.sgrams = list(ngrams(self.text, 3))

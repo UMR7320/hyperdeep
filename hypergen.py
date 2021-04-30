@@ -18,8 +18,8 @@ print("LOAD DEPENDENCIES DONE.")
 # -----------------------------------
 # FOR TESTING
 config = {}
-config["WORD_LENGTH"] = 8
-config["VOCAB_SIZE"] = 1000
+config["WORD_LENGTH"] = 10
+config["VOCAB_SIZE"] = 10000
 config["EMBEDDING_SIZE"] = 300 #300
 config["LSTM_SIZE"] = 256 #256
 config["LEARNING_RATE"] = 0.001
@@ -88,7 +88,10 @@ if __name__ == '__main__':
             args = get_args()
             model_file = args[2]
             text_file = args[3]
-            log_file = args[4]
+            try:
+                log_file = args[4]
+            except:
+                log_file = ""
             new_text = generate(model_file, text_file, log_file, config)
 
             # save predictions in a file
