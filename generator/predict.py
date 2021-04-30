@@ -60,7 +60,7 @@ def generate(model_file, text_file, log_file, config):
 		weighted_predictions = [p*10000 for p in predictions]
 		#max_pred = random.choices(range(len(weighted_predictions)), weights=weighted_predictions, k=1)[0]
 		prediction = preprocessing.reversedictionary["FORME"][max_pred]
-	    
+
 	    # ----------------------------------------------------		
 		# Adjust prediction
 		#if len(concate) > config["WORD_LENGTH"]:
@@ -96,7 +96,7 @@ def generate(model_file, text_file, log_file, config):
 		# CONDITIONS :
 		# ------------
 		# NGRAM
-		cond1 = (current_text[-2], current_text[-1], prediction) not in preprocessing.sgram
+		cond1 = (current_text[-2], current_text[-1], prediction) not in preprocessing.sgram["FORME"]
 		# AVOID LOOP
 		cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
 
@@ -120,16 +120,16 @@ def generate(model_file, text_file, log_file, config):
 			except:
 				give_a_chance = [5, 5]
 			# NGRAM
-			cond1 = (current_text[-2], current_text[-1], prediction) not in preprocessing.sgram
+			cond1 = (current_text[-2], current_text[-1], prediction) not in preprocessing.sgram["FORME"]
 			# AVOID LOOP
 			cond2 = prediction in current_text and random.choices([0, 1], weights=give_a_chance, k=1)[0]
 
 		# ----------------------------------------------------
 
 		if ttl == 100:
-			for gram in preprocessing.lgram:
+			for gram in preprocessing.lgram["FORME"]:
+				prediction = gram
 				if current_text[-2] == gram[0] and current_text[-1] == gram[1]:
-					prediction = gram
 					break
 			concate = concate[:-2] + list(prediction)
 			for word in prediction[2:]:

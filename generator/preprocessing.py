@@ -25,6 +25,8 @@ class PreProcessing:
 
 	def __init__(self, model_file):
 		self.model_file = model_file
+		print("SPACY LOAD")
+		self.nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
 		try:
 			self.dictionary = {}
 			self.sizeOfdictionary = {}
@@ -55,8 +57,6 @@ class PreProcessing:
 		f = open(corpus_file, "r")
 		lines = f.readlines()
 
-		print("SPACY LOAD")
-		nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
 		print("SPACY ANALYSE")
 		docs = list(nlp.pipe(lines, n_process=-1, batch_size=8))
 		print("SPACY DONE.")
@@ -159,8 +159,7 @@ class PreProcessing:
 
 		# ----------------------------
 		# TOKENIZE + MOPH ANALYSE
-		nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
-		docs = list(nlp.pipe(lines, n_process=-1, batch_size=8))
+		docs = list(self.nlp.pipe(lines, n_process=-1, batch_size=8))
 		self.X_bootstrap = {}
 		self.X_bootstrap["FORME"] = []
 		self.X_bootstrap["CODE"] = []
@@ -175,7 +174,7 @@ class PreProcessing:
 
 		self.X = {}
 		self.reversedictionary = {}
-		for wtype in ["FORME", "CODE"]:
+		for wtype in ["FORME"]:
 
 			self.reversedictionary[wtype] = {v: k for k, v in self.dictionary[wtype].items()}
 
