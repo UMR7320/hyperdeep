@@ -48,18 +48,18 @@ def generate(model_file, text_file, log_file, config):
 
 	system("clear");
 	preprocessing.loadBootstrap(text_file, config, concate)
-	print(colored(preprocessing.X_bootstrap, 'cyan'), end=' ', flush=True)
+	print(colored(preprocessing.X_bootstrap["FORME"], 'cyan'), end=' ', flush=True)
 
 	print("START GEN...")
 	for i in range(100):
 
 		# Get next predicted word
 		preprocessing.loadBootstrap(text_file, config, concate)
-		predictions = list(model.predict(preprocessing.X)[0])
+		predictions = list(model.predict(preprocessing.X["FORME"])[0])
 		max_pred = predictions.index(max(predictions))
 		weighted_predictions = [p*10000 for p in predictions]
 		#max_pred = random.choices(range(len(weighted_predictions)), weights=weighted_predictions, k=1)[0]
-		prediction = preprocessing.reversedictionary[max_pred]
+		prediction = preprocessing.reversedictionary["FORME"][max_pred]
 	    
 	    # ----------------------------------------------------		
 		# Adjust prediction
@@ -90,7 +90,7 @@ def generate(model_file, text_file, log_file, config):
 		except:
 			give_a_chance = [5, 5]
 
-		current_text = preprocessing.X_bootstrap.strip().split(" ") + concate
+		current_text = preprocessing.X_bootstrap["FORME"].strip().split(" ") + concate
 		ttl = 0
 		
 		# CONDITIONS :
@@ -109,7 +109,7 @@ def generate(model_file, text_file, log_file, config):
 				max_pred = predictions.index(max(predictions))
 			else:
 				max_pred = random.choices(range(len(weighted_predictions)), weights=weighted_predictions, k=1)[0]
-			prediction = preprocessing.reversedictionary[max_pred]
+			prediction = preprocessing.reversedictionary["FORME"][max_pred]
 			
 			ttl += 1
 			try:
@@ -151,4 +151,4 @@ def generate(model_file, text_file, log_file, config):
 	#print(""-"*50")
 	#print(preprocessing.X_bootstrap.strip() + " " + " ".join(concate))
 
-	return preprocessing.X_bootstrap.strip() + " " + " ".join(concate)
+	return preprocessing.X_bootstrap["FORME"].strip() + " " + " ".join(concate)

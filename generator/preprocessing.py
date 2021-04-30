@@ -26,18 +26,24 @@ class PreProcessing:
 	def __init__(self, model_file):
 		self.model_file = model_file
 		try:
-			with open(model_file + ".index", 'rb') as handle:
-				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
-				self.dictionary = pickle.load(handle)
-				self.sizeOfdictionary = len(self.dictionary.keys())
+			self.dictionary = {}
+			self.sizeOfdictionary = {}
+			self.sgram = {}
+			self.lgram = {}
 
-			with open(model_file + ".sgram", 'rb') as handle:
-				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
-				self.sgram = pickle.load(handle)
+			for wtype in ["FORME", "CODE"]:
+				with open(model_file + "_" + wtype + ".index", 'rb') as handle:
+					print("OPEN EXISTING DICTIONARY:", model_file + ".index")
+					self.dictionary[wtype] = pickle.load(handle)
+					self.sizeOfdictionary[wtype] = len(self.dictionary.keys())
 
-			with open(model_file + ".lgram", 'rb') as handle:
-				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
-				self.lgram = pickle.load(handle)
+				with open(model_file + "_" + wtype + ".sgram", 'rb') as handle:
+					print("OPEN EXISTING SGRAM:", model_file + ".index")
+					self.sgram[wtype] = pickle.load(handle)
+
+				with open(model_file + "_" + wtype + ".lgram", 'rb') as handle:
+					print("OPEN EXISTING LGRAM:", model_file + ".index")
+					self.lgram[wtype] = pickle.load(handle)
 		except:
 			print("NO DICTIONARY DETECTED")
 
@@ -55,17 +61,18 @@ class PreProcessing:
 		docs = list(nlp.pipe(lines, n_process=-1, batch_size=8))
 		print("SPACY DONE.")
 
-		self.text = [] 
-		self.pos = []
+		self.text = {}
+		self.text["FORME"] = []
+		self.text["CODE"] = []
 
 		for doc in docs:
 			for token in doc:
 				# TOKENIZE
-				self.text += [token.text]
-				self.pos += [token.tag_]
+				self.text["FORME"] += [token.text]
+				self.text["CODE"] += [token.tag_]
 
-			self.text += ["\n"]
-			self.pos += ["\n"]
+			self.text["FORME"] += ["\n"]
+			self.text["CODE"] += ["\n"]
 
 		"""
 		# --------------------------------
@@ -86,42 +93,60 @@ class PreProcessing:
 		# --------------------------------
 		"""
 
+		self.dictionary = {}
+		self.sizeOfdictionary = {}
+		self.sgrams = {}
+		self.lgrams = {}
+		self.X = {}
+		self.Y = {}
+
 		# --------------------------------
 		# Keep only most frequent words
-		freqDist = FreqDist(self.text)
-		most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
-		#self.text = [word for word in self.text if word in most_commont_list]
+		for wtype in ["FORME", "CODE"]:
 
-		# Create a new dictionary
-		self.dictionary = dict((c, i) for i, c in enumerate(most_commont_list))
-		self.sizeOfdictionary = len(self.dictionary.keys())
-		pickle.dump(self.dictionary, open(self.model_file + ".index", "wb"))
+			text = self.text[wtype]
 
-		# FILTER CORPUS
-		WORD_LENGTH = config["WORD_LENGTH"]
-		prev_words = []
-		next_words = []
-		for i in range(len(self.text) - WORD_LENGTH):
-			if any(w not in most_commont_list for w in self.text[i:i + WORD_LENGTH + 1]) : continue
-			if self.text[i:i + WORD_LENGTH + 1].count("\n") > 1 : continue
-			prev_words.append(self.text[i:i + WORD_LENGTH])
-			next_words.append(self.text[i + WORD_LENGTH])
-		print("NUMBER OF SAMPLE:", len(next_words))
-		print(prev_words[:10])
+			freqDist = FreqDist(text)
+			most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
+			#self.text = [word for word in self.text if word in most_commont_list]
 
-		# COMPUTE NGRAM
-		self.sgrams = list(ngrams(self.text, 3))
-		pickle.dump(self.sgrams, open(self.model_file + ".sgram", "wb"))
-		self.lgrams =  list(ngrams(self.text, config["WORD_LENGTH"]))
-		pickle.dump(self.lgrams, open(self.model_file + ".lgram", "wb"))
+			# Create a new dictionary
+			dictionary = dict((c, i) for i, c in enumerate(most_commont_list))
+			sizeOfdictionary = len(dictionary.keys())
+			pickle.dump(dictionary, open(self.model_file + "_" + wtype + ".index", "wb"))
 
-		# create two numpy arrays x for storing the features and y for storing its corresponding label
-		self.X = np.zeros((len(prev_words), WORD_LENGTH, self.sizeOfdictionary), dtype=bool)
-		self.Y = np.zeros((len(next_words), self.sizeOfdictionary), dtype=bool)
-		for i, each_words in enumerate(prev_words):
-			for j, each_word in enumerate(each_words):
-				self.X[i, j, self.dictionary[each_word]] = 1
-			self.Y[i, self.dictionary[next_words[i]]] = 1
+			# FILTER CORPUS
+			WORD_LENGTH = config["WORD_LENGTH"]
+			prev_words = []
+			next_words = []
+			for i in range(len(text) - WORD_LENGTH):
+				if any(w not in most_commont_list for w in text[i:i + WORD_LENGTH + 1]) : continue
+				if text[i:i + WORD_LENGTH + 1].count("\n") > 1 : continue
+				prev_words.append(text[i:i + WORD_LENGTH])
+				next_words.append(text[i + WORD_LENGTH])
+			print("NUMBER OF SAMPLE:", len(next_words))
+			print(prev_words[:10])
+
+			# COMPUTE NGRAM
+			sgrams = list(ngrams(text, 3))
+			pickle.dump(sgrams, open(self.model_file + "_" + wtype + ".sgram", "wb"))
+			lgrams = list(ngrams(text, config["WORD_LENGTH"]))
+			pickle.dump(lgrams, open(self.model_file + "_" + wtype + ".lgram", "wb"))
+
+			# create two numpy arrays x for storing the features and y for storing its corresponding label
+			X = np.zeros((len(prev_words), WORD_LENGTH, sizeOfdictionary), dtype=bool)
+			Y = np.zeros((len(next_words), sizeOfdictionary), dtype=bool)
+			for i, each_words in enumerate(prev_words):
+				for j, each_word in enumerate(each_words):
+					X[i, j, dictionary[each_word]] = 1
+				Y[i, dictionary[next_words[i]]] = 1
+
+			self.dictionary[wtype] = dictionary
+			self.sizeOfdictionary[wtype] = sizeOfdictionary
+			self.sgrams[wtype] = sgrams
+			self.lgrams[wtype] = lgrams
+			self.X[wtype] = X
+			self.Y[wtype] = Y
 
 	# ----------------------------------------
 	# Load bootstrap from file
@@ -130,20 +155,40 @@ class PreProcessing:
 
 		# Load text
 		f = open(test_file, "r")
-		self.X_bootstrap = f.read()
+		lines = f.readlines()
 
-		# Load index
-		self.dictionary = pickle.load(open(self.model_file + ".index", "rb" ))
-		self.reversedictionary = {v: k for k, v in self.dictionary.items()}
-		WORD_LENGTH = config["WORD_LENGTH"]
+		# ----------------------------
+		# TOKENIZE + MOPH ANALYSE
+		nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
+		docs = list(nlp.pipe(lines, n_process=-1, batch_size=8))
+		self.X_bootstrap = {}
+		self.X_bootstrap["FORME"] = []
+		self.X_bootstrap["CODE"] = []
+		for doc in docs:
+			for token in doc:
+				# TOKENIZE
+				self.X_bootstrap["FORME"] += [token.text]
+				self.X_bootstrap["CODE"] += [token.tag_]
+		self.X_bootstrap["FORME"] = " ".join(self.X_bootstrap["FORME"])
+		self.X_bootstrap["CODE"] = " ".join(self.X_bootstrap["CODE"])
+		# ----------------------------
 
-		# compute X_bootstrap
-		self.X = np.zeros((1, WORD_LENGTH, len(self.dictionary.keys())), dtype=bool)
-		text = self.X_bootstrap.strip().split(" ") + concate
-		text = text[-WORD_LENGTH:]
-		for j, each_word in enumerate(text):
-			try:
-				self.X[0, j, self.dictionary[each_word]] = 1
-			except:
-				self.X[0, j, 0] = 1
+		self.X = {}
+		self.reversedictionary = {}
+		for wtype in ["FORME", "CODE"]:
+
+			self.reversedictionary[wtype] = {v: k for k, v in self.dictionary[wtype].items()}
+
+			# Load index
+			WORD_LENGTH = config["WORD_LENGTH"]
+
+			# compute X_bootstrap
+			self.X[wtype] = np.zeros((1, WORD_LENGTH, len(self.dictionary[wtype].keys())), dtype=bool)
+			text = self.X_bootstrap[wtype].strip().split(" ") + concate
+			text = text[-WORD_LENGTH:]
+			for j, each_word in enumerate(text):
+				try:
+					self.X[wtype][0, j, self.dictionary[wtype][each_word]] = 1
+				except:
+					self.X[wtype][0, j, 0] = 1
 

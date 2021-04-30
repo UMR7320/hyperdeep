@@ -18,16 +18,16 @@ print("LOAD DEPENDENCIES DONE.")
 # -----------------------------------
 # FOR TESTING
 config = {}
-config["WORD_LENGTH"] = 10
-config["VOCAB_SIZE"] = 10000
-config["EMBEDDING_SIZE"] = 300 #300
-config["LSTM_SIZE"] = 256 #256
+config["WORD_LENGTH"] = 3
+config["VOCAB_SIZE"] = 500
+config["EMBEDDING_SIZE"] = 32 #300
+config["LSTM_SIZE"] = 32 #256
 config["LEARNING_RATE"] = 0.001
-config["DENSE_LAYER_SIZE"] = 1000 #1000
+config["DENSE_LAYER_SIZE"] = 100 #1000
 config["DROPOUT_VAL"] = 0.2
 
-config["BACH_SIZE"] = 1024 # 1024
-config["NUM_EPOCHS"] = 10
+config["BACH_SIZE"] = 64 # 1024
+config["NUM_EPOCHS"] = 3
 config["VALIDATION_SPLIT"] = 0.05
 
 # -----------------------------------
