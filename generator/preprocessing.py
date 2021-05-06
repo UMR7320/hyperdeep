@@ -23,8 +23,8 @@ import spacy
 # ----------------------------------------
 class PreProcessing:
 
-	def __init__(self, model_file):
-		self.model_file = model_file
+	def __init__(self, model_name):
+		self.model_name = model_name
 		print("SPACY LOAD")
 		self.nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
 		try:
@@ -34,20 +34,32 @@ class PreProcessing:
 			self.lgram = {}
 
 			for wtype in ["FORME", "CODE"]:
-				with open(model_file + "_" + wtype + ".index", 'rb') as handle:
-					print("OPEN EXISTING DICTIONARY:", model_file + ".index")
+				with open(model_name + "_" + wtype + ".index", 'rb') as handle:
+					print("OPEN EXISTING DICTIONARY:", model_name + ".index")
 					self.dictionary[wtype] = pickle.load(handle)
 					self.sizeOfdictionary[wtype] = len(self.dictionary.keys())
 
-				with open(model_file + "_" + wtype + ".sgram", 'rb') as handle:
-					print("OPEN EXISTING SGRAM:", model_file + ".index")
+				with open(model_name + "_" + wtype + ".sgram", 'rb') as handle:
+					print("OPEN EXISTING SGRAM:", model_name + ".index")
 					self.sgram[wtype] = pickle.load(handle)
 
-				with open(model_file + "_" + wtype + ".lgram", 'rb') as handle:
-					print("OPEN EXISTING LGRAM:", model_file + ".index")
+				with open(model_name + "_" + wtype + ".lgram", 'rb') as handle:
+					print("OPEN EXISTING LGRAM:", model_name + ".index")
 					self.lgram[wtype] = pickle.load(handle)
 		except:
 			print("NO DICTIONARY DETECTED")
+
+
+	# ----------------------------------------
+	# NLP : get code
+	# ----------------------------------------		
+	def get_code(self, token):
+		code = token.tag_
+		if code != "SPACE":
+			for key, value in token.morph.to_dict().items():
+				code += ":" + key + "_" + value
+		return code
+
 
 	# ----------------------------------------
 	# Load data from file
@@ -58,7 +70,7 @@ class PreProcessing:
 		lines = f.readlines()
 
 		print("SPACY ANALYSE")
-		docs = list(nlp.pipe(lines, n_process=-1, batch_size=8))
+		docs = list(self.nlp.pipe(lines, n_process=-1, batch_size=8))
 		print("SPACY DONE.")
 
 		self.text = {}
@@ -69,10 +81,7 @@ class PreProcessing:
 			for token in doc:
 				# TOKENIZE
 				self.text["FORME"] += [token.text]
-				self.text["CODE"] += [token.tag_]
-
-			self.text["FORME"] += ["\n"]
-			self.text["CODE"] += ["\n"]
+				self.text["CODE"] += [self.get_code(token)]
 
 		"""
 		# --------------------------------
@@ -113,7 +122,7 @@ class PreProcessing:
 			# Create a new dictionary
 			dictionary = dict((c, i) for i, c in enumerate(most_commont_list))
 			sizeOfdictionary = len(dictionary.keys())
-			pickle.dump(dictionary, open(self.model_file + "_" + wtype + ".index", "wb"))
+			pickle.dump(dictionary, open(self.model_name + "_" + wtype + ".index", "wb"))
 
 			# FILTER CORPUS
 			WORD_LENGTH = config["WORD_LENGTH"]
@@ -129,9 +138,9 @@ class PreProcessing:
 
 			# COMPUTE NGRAM
 			sgrams = list(ngrams(text, 3))
-			pickle.dump(sgrams, open(self.model_file + "_" + wtype + ".sgram", "wb"))
+			pickle.dump(sgrams, open(self.model_name + "_" + wtype + ".sgram", "wb"))
 			lgrams = list(ngrams(text, config["WORD_LENGTH"]))
-			pickle.dump(lgrams, open(self.model_file + "_" + wtype + ".lgram", "wb"))
+			pickle.dump(lgrams, open(self.model_name + "_" + wtype + ".lgram", "wb"))
 
 			# create two numpy arrays x for storing the features and y for storing its corresponding label
 			X = np.zeros((len(prev_words), WORD_LENGTH, sizeOfdictionary), dtype=bool)
@@ -151,30 +160,11 @@ class PreProcessing:
 	# ----------------------------------------
 	# Load bootstrap from file
 	# ----------------------------------------
-	def loadBootstrap(self, test_file, config, concate=[]):   
-
-		# Load text
-		f = open(test_file, "r")
-		lines = f.readlines()
-
-		# ----------------------------
-		# TOKENIZE + MOPH ANALYSE
-		docs = list(self.nlp.pipe(lines, n_process=-1, batch_size=8))
-		self.X_bootstrap = {}
-		self.X_bootstrap["FORME"] = []
-		self.X_bootstrap["CODE"] = []
-		for doc in docs:
-			for token in doc:
-				# TOKENIZE
-				self.X_bootstrap["FORME"] += [token.text]
-				self.X_bootstrap["CODE"] += [token.tag_]
-		self.X_bootstrap["FORME"] = " ".join(self.X_bootstrap["FORME"])
-		self.X_bootstrap["CODE"] = " ".join(self.X_bootstrap["CODE"])
-		# ----------------------------
+	def loadSequence(self, bootstrap, config, concate=[]):   
 
 		self.X = {}
 		self.reversedictionary = {}
-		for wtype in ["FORME"]:
+		for i, wtype in enumerate(["FORME", "CODE"]):
 
 			self.reversedictionary[wtype] = {v: k for k, v in self.dictionary[wtype].items()}
 
@@ -183,11 +173,10 @@ class PreProcessing:
 
 			# compute X_bootstrap
 			self.X[wtype] = np.zeros((1, WORD_LENGTH, len(self.dictionary[wtype].keys())), dtype=bool)
-			text = self.X_bootstrap[wtype].strip().split(" ") + concate
+			text = bootstrap[wtype] + [c[i] for c in concate]
 			text = text[-WORD_LENGTH:]
 			for j, each_word in enumerate(text):
 				try:
 					self.X[wtype][0, j, self.dictionary[wtype][each_word]] = 1
 				except:
 					self.X[wtype][0, j, 0] = 1
-
