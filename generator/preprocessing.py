@@ -173,7 +173,7 @@ class PreProcessing:
 
 			# compute X_bootstrap
 			self.X[wtype] = np.zeros((1, WORD_LENGTH, len(self.dictionary[wtype].keys())), dtype=bool)
-			text = bootstrap[wtype] + [c[i] for c in concate]
+			text = bootstrap[wtype] + concate #[c[i] for c in concate]
 			text = text[-WORD_LENGTH:]
 			for j, each_word in enumerate(text):
 				try:

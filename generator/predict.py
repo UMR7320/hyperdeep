@@ -32,19 +32,17 @@ def generate(model_file, text_file, log_file, config):
 
 	# Load text
 	f = open(text_file, "r")
-	lines = f.readlines()
 
 	# ----------------------------
 	# BOOTSTRAP TEXT : TOKENIZE + MOPH ANALYSE
-	docs = list(preprocessing.nlp.pipe(lines, n_process=-1, batch_size=8))
+	doc = list(preprocessing.nlp(f.read().strip()))
 	bootstrap = {}
 	bootstrap["FORME"] = []
 	bootstrap["CODE"] = []
-	for doc in docs:
-		for token in doc:
-			# TOKENIZE
-			bootstrap["FORME"] += [token.text]
-			bootstrap["CODE"] += [preprocessing.get_code(token)]
+	for token in doc:
+		# TOKENIZE
+		bootstrap["FORME"] += [token.text]
+		bootstrap["CODE"] += [preprocessing.get_code(token)]
 	# ----------------------------
 
 	# LOG FILE (update results)
@@ -75,7 +73,7 @@ def generate(model_file, text_file, log_file, config):
 		# Get next predicted word
 		preprocessing.loadSequence(bootstrap, config, concate)
 
-		# FORM prediction
+		# FORME prediction
 		predictions = list(forme_model.predict(preprocessing.X["FORME"])[0])
 
 		# CODE prediction
@@ -88,44 +86,53 @@ def generate(model_file, text_file, log_file, config):
 			max_pred = predictions_code.index(max(predictions_code))
 			prediction_code = preprocessing.reversedictionary["CODE"][max_pred]
 		"""
-
-		prediction_code = bootstrap["CODE"][i]
-
-		"""
-		if i%2==0:
-			current_codes = bootstrap["CODE"] + [c[1] for c in concate]
-			#print(current_codes)
-			matching_list = []
-			for sgram in preprocessing.sgram["CODE"]:
-				if list(sgram[:-1]) == current_codes[-(len(sgram)-1):]:
-					matching_list += [sgram]
-			prediction_code = random.choice(matching_list)[-1]
-		"""
-
-		current_text = bootstrap["FORME"] + [c[0] for c in concate]
+		
+		current_text = bootstrap["FORME"] + concate #[c[0] for c in concate]
 
 		ttl = 0
 		while ttl < 100:
 			max_pred = predictions.index(max(predictions))
 			prediction = preprocessing.reversedictionary["FORME"][max_pred]
-			text = " ".join(current_text + [prediction])
-			doc = list(preprocessing.nlp(text))
-			code = preprocessing.get_code(doc[-1])			
+			#text = " ".join(current_text + [prediction])
+			#doc = list(preprocessing.nlp(text))
+			#code = preprocessing.get_code(doc[-1])			
+
+			# CONDITIONS :
+			# ------------
+			# NGRAM
+			cond1 = (current_text[-2], current_text[-1], prediction) in preprocessing.sgram["FORME"]
+			# AVOID LOOP
+			try:
+				if spec[prediction]["z"] < 1:
+					give_a_chance = [1, 10]
+				else:
+					give_a_chance = [int(spec[prediction]["z"]), 10]
+			except:
+				give_a_chance = [5, 5]
+			cond2 = not prediction in current_text or random.choices([0, 1], weights=give_a_chance, k=1)[0]
+			print(cond1, cond2)
+
+			if cond1 and cond2: break
+			
+			# Next loop
 			predictions[max_pred] = -1
-			if code == prediction_code: break
 			ttl += 1
 
-		if ttl >= 100:
-			matching_list = []
-			for sgram in preprocessing.sgram["FORME"]:
-				if list(sgram[:-1]) == current_text[-(len(sgram)-1):]:
-					matching_list += [sgram]
-			prediction = random.choice(matching_list)[-1]
+		if ttl == 100:
+			for gram in preprocessing.lgram["FORME"]:
+				if current_text[-2] == gram[0] and current_text[-1] == gram[1]:
+					prediction = gram
+					break
+			concate = concate[:-2] + list(prediction)
+			for word in prediction[2:]:
+				print(colored(word, 'cyan'), end=' ', flush=True)
+				log_data["message"] += word + " "
+		else:
+			if prediction != "\n" or prediction != concate[-1] or concate[-1] != concate[-2]:
+				log_data["message"] += prediction + " "
+			print(prediction, end=' ', flush=True)
+			concate += [prediction]
 
-			
-		log_data["message"] += prediction + " "
-		print(prediction, end=' ', flush=True)
-		concate += [(prediction, prediction_code)]
 
 		# WRITE CURRENT TEXT IN A LOG FILE
 		try:
@@ -134,4 +141,4 @@ def generate(model_file, text_file, log_file, config):
 			pass
 
 	print("\n")
-	return "" #" ".join(bootstrap["FORME"]) + " " + " ".join(concate)
+	return " ".join(bootstrap["FORME"]) + " ".join(concate)
