@@ -43,6 +43,9 @@ class Language:
 		# LSTM LAYER
 		# ----------
 		rnn=Bidirectional(LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"]))(inputs)
+		#rnn=LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
+		#rnn=LSTM(int(config["LSTM_SIZE"]/2), return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn)
+		#rnn=LSTM(int(config["LSTM_SIZE"]/4), return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn)
 
 		# ---------------
 		# ATTENTION LAYER

@@ -116,6 +116,7 @@ class PreProcessing:
 			text = self.text[wtype]
 
 			freqDist = FreqDist(text)
+			#most_commont_list = [entry[0] for entry in freqDist.most_common() if entry[1] > 10]
 			most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
 			#self.text = [word for word in self.text if word in most_commont_list]
 
@@ -134,7 +135,7 @@ class PreProcessing:
 				prev_words.append(text[i:i + WORD_LENGTH])
 				next_words.append(text[i + WORD_LENGTH])
 			print("NUMBER OF SAMPLE:", len(next_words))
-			print(prev_words[:10])
+			print(prev_words[:100])
 
 			# COMPUTE NGRAM
 			sgrams = list(ngrams(text, 3))

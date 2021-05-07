@@ -14,6 +14,8 @@ from termcolor import colored
 from tensorflow.keras.models import load_model
 from generator.preprocessing import PreProcessing
 
+from nltk import ngrams
+
 # ------------------------------
 # GENERATE
 # ------------------------------
@@ -68,7 +70,7 @@ def generate(model_file, text_file, log_file, config):
 
 
 	print("START GEN...")
-	for i in range(100):
+	for i in range(200):
 
 		# Get next predicted word
 		preprocessing.loadSequence(bootstrap, config, concate)
@@ -100,8 +102,10 @@ def generate(model_file, text_file, log_file, config):
 			# CONDITIONS :
 			# ------------
 			# NGRAM
-			cond1 = (current_text[-2], current_text[-1], prediction) in preprocessing.sgram["FORME"]
+			cond1 = tuple(current_text[-(config["WORD_LENGTH"]-1):] + [prediction]) in preprocessing.lgram["FORME"]
 			# AVOID LOOP
+			#current_ngram = list(ngrams(current_text, 3))
+			"""
 			try:
 				if spec[prediction]["z"] < 1:
 					give_a_chance = [1, 10]
@@ -109,8 +113,8 @@ def generate(model_file, text_file, log_file, config):
 					give_a_chance = [int(spec[prediction]["z"]), 10]
 			except:
 				give_a_chance = [5, 5]
-			cond2 = not prediction in current_text or random.choices([0, 1], weights=give_a_chance, k=1)[0]
-			print(cond1, cond2)
+			"""
+			cond2 = True#not tuple(current_text[-2:] + [prediction]) in  current_ngram or (len(prediction) > 4 and random.choices([0, 1], weights=give_a_chance, k=1)[0])
 
 			if cond1 and cond2: break
 			
@@ -119,6 +123,7 @@ def generate(model_file, text_file, log_file, config):
 			ttl += 1
 
 		if ttl == 100:
+			random.shuffle(preprocessing.lgram["FORME"])
 			for gram in preprocessing.lgram["FORME"]:
 				if current_text[-2] == gram[0] and current_text[-1] == gram[1]:
 					prediction = gram
@@ -128,8 +133,7 @@ def generate(model_file, text_file, log_file, config):
 				print(colored(word, 'cyan'), end=' ', flush=True)
 				log_data["message"] += word + " "
 		else:
-			if prediction != "\n" or prediction != concate[-1] or concate[-1] != concate[-2]:
-				log_data["message"] += prediction + " "
+			log_data["message"] += prediction + " "
 			print(prediction, end=' ', flush=True)
 			concate += [prediction]
 

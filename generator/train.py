@@ -39,7 +39,7 @@ def train_model(corpus_file, model_file, config):
 	preprocessing.loadCorpus(corpus_file, config)
 
 	# Train Language model
-	for wtype in ["CODE"]:
+	for wtype in ["FORME", "CODE"]:
 		print("LEARNING " + wtype + "...")
 		language = Language()
 		earlystop = EarlyStopping(monitor='val_accuracy', min_delta=0.01, patience=3, verbose=1, mode='max')
