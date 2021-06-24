@@ -291,7 +291,11 @@ def predict(text_file, model_file, config, preprocessing=False):
 				index = x_data[channel][sentence_nb][i]
 				word_str = dictionaries[channel]["index_word"][index]
 				if word_str == "__UK__":
-					word_str = preprocessing.raw_text[word_nb].split("**")[channel]
+					try:
+						word_str = preprocessing.raw_text[word_nb].split("**")[channel]
+					except:
+						print("ERR:", preprocessing.raw_text[word_nb], " channel", channel, "not found")
+						word_str = "__UK__"
 
 				# COMPUTE WORD ENTRY
 				word += [{word_str : tds_value}]
