@@ -154,7 +154,7 @@ def train(corpus_file, model_file, config):
 	if not len(y_test):
 		scores = model.evaluate(x_val, y_val, verbose=1)
 		print(scores)
-		
+
 	# LARGE TEST
 	else: 
 		scores = model.evaluate(x_test, y_test, verbose=1)
@@ -162,7 +162,7 @@ def train(corpus_file, model_file, config):
 
 		# COMPUTE TDS ON TEST DATASET
 		tds = computeTDS(config, preprocessing, model, x_test)
-		nb_words = 0
+		nb_words = {}
 		results = {}
 		classes = config["CLASSES"]
 		for entry in tds:
@@ -179,13 +179,13 @@ def train(corpus_file, model_file, config):
 					results[classe_name] = results.get(classe_name, {})
 					results[classe_name][i] = results[classe_name].get(i, 0)
 					results[classe_name][i] += word_tds
-				nb_words += 1
+				nb_words[classe_name] = nb_words.get(classe_name, 0) + 1
 
 		for classe in classes:
 			print(classe)
 			try:
 				for channel, value in results[classe].items():
-						print(value/nb_words, end="\t")
+						print(value/nb_words[classe], end="\t")
 			except:
 				print("no data...")
 				break
