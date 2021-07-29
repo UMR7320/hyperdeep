@@ -62,7 +62,7 @@ def train(corpus_file, model_file, config):
 	# GET TRAIN DATASET
 	x_train, y_train, x_val, y_val, x_test, y_test = preprocessing.x_train, preprocessing.y_train, preprocessing.x_val, preprocessing.y_val, preprocessing.x_test, preprocessing.y_test
 	print("Available samples:")
-	print("train:", len(y_train), "valid:", y_val, "test:", y_test)
+	print("train:", len(x_train[0]), "valid:", len(x_val[0]), "test:", len(x_test[0]))
 
 	checkpoint = ModelCheckpoint(model_file, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 	earlystop = EarlyStopping(monitor='val_accuracy', min_delta=0.01, patience=3, verbose=1, mode='max')
@@ -142,64 +142,69 @@ def train(corpus_file, model_file, config):
 		f.flush()
 		f.close()
 	print("DONE.")
+	
 	# ------------------------------------
-
 	# get score
 	print("-"*50)
 	print("TESTING")
 	print(len(y_train), len(y_val), len(y_test))
 	model = load_model(model_file)
-	if len(y_test):
-		scores = model.evaluate(x_test, y_test, verbose=1)
-	else:
+	
+	# SMALL TEST
+	if not len(y_test):
 		scores = model.evaluate(x_val, y_val, verbose=1)
-	print(scores)
+		print(scores)
+		
+	# LARGE TEST
+	else: 
+		scores = model.evaluate(x_test, y_test, verbose=1)
+		print(scores)
+
+		# COMPUTE TDS ON TEST DATASET
+		tds = computeTDS(config, preprocessing, model, x_test)
+		nb_words = 0
+		results = {}
+		classes = config["CLASSES"]
+		for entry in tds:
+	        
+			# PREDICTED CLASS
+			classe_value = max(entry[1])
+			classe_id = entry[1].index(classe_value) # predicted_class
+			classe_name = classes[classe_id]
+
+			for word in entry[0]:
+				for i, channel in enumerate(range(len(word))):
+					word_str = next(iter(word[channel]))
+					word_tds = word[channel][word_str][classe_id]
+					results[classe_name] = results.get(classe_name, {})
+					results[classe_name][i] = results[classe_name].get(i, 0)
+					results[classe_name][i] += word_tds
+				nb_words += 1
+
+		for classe in classes:
+			print(classe)
+			try:
+				for channel, value in results[classe].items():
+						print(value/nb_words, end="\t")
+			except:
+				print("no data...")
+				break
+			print("\n" + "-"*5)
 	return scores
 
 # ------------------------------
 # PREDICT
 # ------------------------------
-def predict(text_file, model_file, config, preprocessing=False):
-
-	# ------------------------------------------
-	# Force to use CPU (no need GPU on predict)
-	os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-	os.environ["CUDA_VISIBLE_DEVICES"] = ""
-	# ------------------------------------------
-
-	result = []
-
-	# preprocess data 
-	preprocessing = PreProcessing()
-	preprocessing.loadData(text_file, model_file, config, getLabels=False, createDictionary=False)
-	x_data = []
-	for channel in range(len(preprocessing.x_train)):
-		x_data += [np.concatenate((preprocessing.x_val[channel],preprocessing.x_test[channel],preprocessing.x_train[channel]), axis=0)]
-	classifier = load_model(model_file)
-
-	# get dictionnaries
-	dictionaries = preprocessing.dictionaries
-
-	print("----------------------------")
-	print("PREDICTION")
-	print("----------------------------")
-
-	# Plot training & validation accuracy values ---- 
-	#plot_model(classifier,show_shapes=False, to_file='model.dot')
-	#plot_model(classifier, to_file='model.png')
-	# -----------------------------------------------
-
-	# LIME
-	if config["ENABLE_LIME"]:
-		print("----------------------------")
-		print("LIME")
-		print("----------------------------")
-		limeExplainer = LimeExplainer(preprocessing, classifier)
-		lime = limeExplainer.analyze(x_data)
+def computeTDS(config, preprocessing, classifier, x_data):
 
 	print("----------------------------")
 	print("TDS")
-	print("----------------------------")	
+	print("----------------------------")
+
+	result = []
+	# get dictionnaries
+	dictionaries = preprocessing.dictionaries
+
 	# GET LAYER INDICES and weights
 	i = 0
 	conv_layers = []
@@ -228,7 +233,7 @@ def predict(text_file, model_file, config, preprocessing=False):
 		print("DECONVOLUTION summary:")
 		deconv_model.summary()
 		t0 = time.time()
-		tds = deconv_model.predict(x_data)#[-1]
+		tds = deconv_model.predict(x_data)#[-1])
 	else:
 		tds = False
 
@@ -251,7 +256,8 @@ def predict(text_file, model_file, config, preprocessing=False):
 		sentence += [dense2[sentence_nb].tolist()]
 		prediction_index = sentence[1].index(max(sentence[1]))
 
-		print(sentence_nb , "/" , len(x_data[0]))
+		if sentence_nb%100 == 0:
+			print(sentence_nb , "/" , len(x_data[0]))
 
 		total = {}	
 		
@@ -303,26 +309,44 @@ def predict(text_file, model_file, config, preprocessing=False):
 			# ADD WORD ENTRY
 			sentence[0] += [word]	
 			word_nb += 1
-
 		result.append(sentence)
 
-		# ------ DRAW DECONV FACE ------
-		"""
-		deconv_images = []
-		deconv_image = np.zeros( (config["SEQUENCE_SIZE"]*len(x_data), config["EMBEDDING_DIM"], 3), dtype=np.uint8 )
-		for channel in range(len(x_data)):
-			for y in range(config["SEQUENCE_SIZE"]):
-				deconv_value 	= deconv[channel][sentence_nb][y]
-				for x in range(int(config["EMBEDDING_DIM"])):
-					dv = deconv_value[x]
-					dv = dv*200
-					deconv_image[y+config["SEQUENCE_SIZE"]*(channel), x] = [dv, dv, dv]
-
-		img = smp.toimage( deconv_image )   # Create a PIL image
-		img.save(model_file + ".png")
-		deconv_images.append(imageio.imread(model_file + ".png"))
-
-	# CREATE THE GIF ANIMATION
-	imageio.mimsave(model_file + ".gif", deconv_images, duration=0.1)
-	"""
 	return result
+
+def predict(text_file, model_file, config, preprocessing=False):
+
+	# ------------------------------------------
+	# Force to use CPU (no need GPU on predict)
+	os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+	os.environ["CUDA_VISIBLE_DEVICES"] = ""
+	# ------------------------------------------
+
+	# preprocess data 
+	preprocessing = PreProcessing()
+	preprocessing.loadData(text_file, model_file, config, getLabels=False, createDictionary=False)
+	x_data = []
+	for channel in range(len(preprocessing.x_train)):
+		x_data += [np.concatenate((preprocessing.x_val[channel],preprocessing.x_test[channel],preprocessing.x_train[channel]), axis=0)]
+	classifier = load_model(model_file)
+
+	print("----------------------------")
+	print("PREDICTION")
+	print("----------------------------")
+
+	# Plot training & validation accuracy values ---- 
+	#plot_model(classifier,show_shapes=False, to_file='model.dot')
+	#plot_model(classifier, to_file='model.png')
+	# -----------------------------------------------
+
+	# LIME
+	if config["ENABLE_LIME"]:
+		print("----------------------------")
+		print("LIME")
+		print("----------------------------")
+		limeExplainer = LimeExplainer(preprocessing, classifier)
+		lime = limeExplainer.analyze(x_data)
+
+	# GET TDS scores from predictions
+	predictions = computeTDS(config, preprocessing, classifier, x_data)
+
+	return predictions
