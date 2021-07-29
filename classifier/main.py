@@ -274,13 +274,12 @@ def computeTDS(config, preprocessing, classifier, x_data):
 					# TDS CALCULATION
 					# -----------------------------------
 					# OLD VERSION (TDS)
-					_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
-					tds_value = []
-					for classe in config["CLASSES"]:
-						tds_value += [_tds_value]
+					#_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+					#tds_value = []
+					#for classe in config["CLASSES"]:
+					#	tds_value += [_tds_value]
 
 					# NEW VERSION (wTDS)
-					"""
 					tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
 					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 					from_i = (i*tds_size*preprocessing.nb_channels) + (channel*tds_size)
@@ -295,7 +294,6 @@ def computeTDS(config, preprocessing, classifier, x_data):
 					tds_value = np.dot(vec2, weight2) + dense_bias[1]
 					tds_value *= 100
 					tds_value = tds_value.tolist()
-					"""
 					
 				# GET WORD STR
 				index = x_data[channel][sentence_nb][i]
