@@ -102,7 +102,7 @@ class PreProcessing:
 		print("Create dictionary...")
 		indexes = dict((i+1, c) for i, c in enumerate(most_commont_list))
 		indexes[0] = "PAD"
-		dictionary = dict((c, i) for i, c in index.items())
+		dictionary = dict((c, i) for i, c in indexes.items())
 		vocabulary = list(dictionary.keys())
 		sizeOfdictionary = len(vocabulary)
 		print("Size of dictionary:", sizeOfdictionary)
