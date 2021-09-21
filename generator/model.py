@@ -41,7 +41,7 @@ class Language:
 
 		# Embedding
 		embedding = Embedding(
-			config["VOCAB_SIZE"],
+			config["VOCAB_SIZE"]+1,
 			config["EMBEDDING_SIZE"],
 			input_length=config["WORD_LENGTH"],
 			weights=[weights],
