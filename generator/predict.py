@@ -12,16 +12,16 @@ from os import environ, system
 from termcolor import colored
 
 from tensorflow.keras.models import load_model
-from generator.preprocessing import PreProcessing
+from ..generator.preprocessing import PreProcessing
 
 from nltk import ngrams
 
 # ------------------------------
 # GENERATE
 # ------------------------------
-def generate(model_file, text_file, log_file, config):
+def generate(model_file, bootstrap_raw, log_file, config):
 
-	print("GENERATE")
+	print("GENERATE", model_file)
 	environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 	environ["CUDA_VISIBLE_DEVICES"] = ""
 	
@@ -32,12 +32,9 @@ def generate(model_file, text_file, log_file, config):
 	preprocessing = PreProcessing(model_file)
 	print("PREPROCESSING DONE.")
 
-	# Load text
-	f = open(text_file, "r")
-
 	# ----------------------------
 	# BOOTSTRAP TEXT : TOKENIZE + MOPH ANALYSE
-	doc = list(preprocessing.nlp(f.read().strip()))
+	doc = list(preprocessing.nlp(bootstrap_raw))
 	bootstrap = {}
 	bootstrap["FORME"] = []
 	bootstrap["CODE"] = []
@@ -103,9 +100,11 @@ def generate(model_file, text_file, log_file, config):
 			# ------------
 			# NGRAM
 			cond1 = tuple(current_text[-(config["WORD_LENGTH"]-1):] + [prediction]) in preprocessing.lgram["FORME"]
+			#cond1 = tuple(current_text[-2:] + [prediction]) in preprocessing.sgram["FORME"]
+			
 			# AVOID LOOP
-			#current_ngram = list(ngrams(current_text, 3))
 			"""
+			current_ngram = list(ngrams(current_text, 3))
 			try:
 				if spec[prediction]["z"] < 1:
 					give_a_chance = [1, 10]
@@ -113,8 +112,9 @@ def generate(model_file, text_file, log_file, config):
 					give_a_chance = [int(spec[prediction]["z"]), 10]
 			except:
 				give_a_chance = [5, 5]
+			cond2 = not tuple(current_text[-2:] + [prediction]) in  current_ngram or (len(prediction) > 4 and random.choices([0, 1], weights=give_a_chance, k=1)[0])
 			"""
-			cond2 = True#not tuple(current_text[-2:] + [prediction]) in  current_ngram or (len(prediction) > 4 and random.choices([0, 1], weights=give_a_chance, k=1)[0])
+			cond2 = True
 
 			if cond1 and cond2: break
 			

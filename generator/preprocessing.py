@@ -11,9 +11,12 @@ import os
 import pickle
 import re
 import os
+import multiprocessing
 
 from nltk import ngrams
 from nltk import FreqDist
+
+from gensim.models import Word2Vec
 
 print("IMPORT SPACY")
 import spacy
@@ -64,43 +67,15 @@ class PreProcessing:
 	# ----------------------------------------
 	# Load data from file
 	# ----------------------------------------
-	def loadCorpus(self, corpus_file, config):   
-
-		f = open(corpus_file, "r")
-		lines = f.readlines()
+	def loadCorpus(self, corpus, config):  
 
 		print("SPACY ANALYSE")
-		docs = list(self.nlp.pipe(lines, n_process=-1, batch_size=8))
+		docs = list(self.nlp.pipe(corpus, n_process=-1, batch_size=8))
 		print("SPACY DONE.")
 
 		self.text = {}
 		self.text["FORME"] = []
 		self.text["CODE"] = []
-
-		for doc in docs:
-			for token in doc:
-				# TOKENIZE
-				self.text["FORME"] += [token.text]
-				self.text["CODE"] += [self.get_code(token)]
-
-		"""
-		# --------------------------------
-		# Word2Vec
-		# HYPERPARAMETERS
-		EMBEDDING_SIZE = 300
-		MIN_COUNT = 0
-		WINDOW_SIZE = 10
-
-		print("process word2vec...")
-		self.w2v_model = Word2Vec(min_count=MIN_COUNT, window=WINDOW_SIZE, size=config["EMBEDDING_SIZE"], sg=1, workers=8)
-		self.w2v_model.build_vocab([self.text], progress_per=10000)
-		self.w2v_model.train(self.text, total_examples=self.w2v_model.corpus_count, epochs=10, report_delay=1)
-
-		# Get vectors from the w2v model
-		self.vectors = self.w2v_model.wv
-		#print(list(vectors.vocab)[:10])
-		# --------------------------------
-		"""
 
 		self.dictionary = {}
 		self.sizeOfdictionary = {}
@@ -109,16 +84,150 @@ class PreProcessing:
 		self.X = {}
 		self.Y = {}
 
+		for doc in docs:
+			for token in doc:
+				# TOKENIZE
+				self.text["FORME"] += [token.text]
+				self.text["CODE"] += [self.get_code(token)]
+
+		# --------------------------------		
+		# PREPROCESS FORME
+
+		# MOST FREQUENT WORDS
+		freqDist = FreqDist(self.text["FORME"])
+		most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
+		print(most_commont_list[:10])
+
+		# CREATE DICTIONARY
+		print("Create dictionary...")
+		indexes = dict((i+1, c) for i, c in enumerate(most_commont_list))
+		indexes[0] = "PAD"
+		dictionary = dict((c, i) for i, c in index.items())
+		vocabulary = list(dictionary.keys())
+		sizeOfdictionary = len(vocabulary)
+		print("Size of dictionary:", sizeOfdictionary)
+
+		# FILTER CORPUS
+		sentences = []
+		sentence = []
+		keepSentence = True
+		for i, word in enumerate(self.text["FORME"]):
+			
+			if word not in most_commont_list:
+				keepSentence = False
+			elif self.text["CODE"][i] != "SPACE":
+				sentence += [word]
+			
+			if self.text["CODE"][i] == "PUNCT":
+				if keepSentence:
+					sentences += sentence
+				else:
+					keepSentence = True
+				sentence = []
+
+		WORD_LENGTH = config["WORD_LENGTH"]
+		prev_words = []
+		next_words = []
+		for i in range(len(sentences) - WORD_LENGTH):
+			prev_words.append(sentences[i:i + WORD_LENGTH])
+			next_words.append(sentences[i + WORD_LENGTH])
+		print("NUMBER OF SAMPLE:", len(next_words))
+
+		# COMPUTE NGRAM
+		print("COMPUTE NGRAM...")
+		sgrams = list(ngrams(sentences, 3))
+		lgrams = list(ngrams(sentences, WORD_LENGTH))
+
+		# create two numpy arrays x for storing the features and y for storing its corresponding label
+		X = np.zeros((len(prev_words), WORD_LENGTH), dtype=int)
+		Y = np.zeros((len(next_words), sizeOfdictionary), dtype=int)
+		for i, each_words in enumerate(prev_words):
+			for j, each_word in enumerate(each_words):
+				X[i, j] = dictionary[each_word]
+			Y[i, dictionary[next_words[i]]] = 1
+
+		print(X[:10])
+		print(Y[:10])
+		print("DATA LEN = ", len(X))
+
+		# --------------------------------
+		# Word2Vec
+		print("process word2vec...")
+		cores = multiprocessing.cpu_count() # Count the number of cores in a computer
+		print(prev_words[:10])
+		self.w2v_model = Word2Vec(min_count=0,
+                     window=5,
+                     size=300,
+                     sample=6e-5, 
+                     alpha=0.03, 
+                     min_alpha=0.0007, 
+                     negative=0,
+                     workers=cores-1)
+		self.w2v_model.build_vocab(prev_words, progress_per=10000)
+		self.w2v_model.train(prev_words, total_examples=self.w2v_model.corpus_count, epochs=10, report_delay=1)
+
+		print("vocab size", len(self.w2v_model.wv.vocab.keys()))
+		print("France:", self.w2v_model.wv['France'])
+
+		# Get vectors from the w2v model
+		#self.embedding_matrix = self.w2v_model.wv.syn0
+		self.embedding_matrix = np.zeros((sizeOfdictionary, config["EMBEDDING_SIZE"]))
+		for i in range(sizeOfdictionary):
+			try:
+				embedding_vector = self.w2v_model.wv[vocabulary[i]]
+				self.embedding_matrix[i] = embedding_vector
+			except:
+				print(vocabulary[i], "not in vocabulary")
+		# --------------------------------
+
+		# Compute attributes
+		self.dictionary["FORME"] = dictionary
+		self.indexes["FORME"] = indexes
+		self.sizeOfdictionary["FORME"] = sizeOfdictionary
+		self.sgrams["FORME"] = sgrams
+		self.lgrams["FORME"] = lgrams
+		self.X["FORME"] = X
+		self.Y["FORME"] = Y
+		# Store datas
+		pickle.dump(dictionary, open(self.model_name + "_FORME.index", "wb"))
+		pickle.dump(sgrams, open(self.model_name + "_FORME.sgram", "wb"))
+		pickle.dump(lgrams, open(self.model_name + "_FORME.lgram", "wb"))
+
+		# --------------------------------
+		# Word2Vec
+		"""
+		print("process word2vec...")
+		self.w2v_model = Word2Vec([self.text["FORME"]],
+                              min_count=0,
+                              workers=4,
+                              size=config["EMBEDDING_SIZE"],
+                              window=5,
+                              iter = 10)
+
+		print("vocab size", len(self.w2v_model.wv.vocab.keys()))
+		print("France:", self.w2v_model.wv['France'])
+
+		# Get vectors from the w2v model
+		#self.embedding_matrix = self.w2v_model.wv.syn0
+		self.embedding_matrix = np.zeros((len(self.w2v_model.wv.vocab), config["EMBEDDING_SIZE"]))
+		for i in range(len(self.w2v_model.wv.vocab)):
+			embedding_vector = self.w2v_model.wv[self.w2v_model.wv.index2word[i]]
+			if embedding_vector is not None:
+				self.embedding_matrix[i] = embedding_vector
+		# --------------------------------
+
+
+
 		# --------------------------------
 		# Keep only most frequent words
-		for wtype in ["FORME", "CODE"]:
+		#for wtype in ["FORME", "CODE"]:
+		for wtype in ["FORME"]:
 
 			text = self.text[wtype]
 
 			freqDist = FreqDist(text)
 			#most_commont_list = [entry[0] for entry in freqDist.most_common() if entry[1] > 10]
 			most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
-			#self.text = [word for word in self.text if word in most_commont_list]
 
 			# Create a new dictionary
 			dictionary = dict((c, i) for i, c in enumerate(most_commont_list))
@@ -157,6 +266,7 @@ class PreProcessing:
 			self.lgrams[wtype] = lgrams
 			self.X[wtype] = X
 			self.Y[wtype] = Y
+			"""
 
 	# ----------------------------------------
 	# Load bootstrap from file
@@ -165,7 +275,8 @@ class PreProcessing:
 
 		self.X = {}
 		self.reversedictionary = {}
-		for i, wtype in enumerate(["FORME", "CODE"]):
+		#for i, wtype in enumerate(["FORME", "CODE"]):
+		for i, wtype in enumerate(["FORME"]):
 
 			self.reversedictionary[wtype] = {v: k for k, v in self.dictionary[wtype].items()}
 

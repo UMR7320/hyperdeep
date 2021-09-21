@@ -7,6 +7,8 @@ import operator
 import time
 import os
 
+import imageio
+import scipy.misc as smp
 import matplotlib.pyplot as plt
 
 from keras.utils import plot_model
@@ -16,12 +18,9 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
 from tensorflow.keras.models import Model
 
-from classifier.preprocessing import PreProcessing
-from classifier.models import Classifier
-from analyzer.lime import LimeExplainer
-
-import scipy.misc as smp
-import imageio
+from ..analyzer.lime import LimeExplainer
+from ..classifier.preprocessing import PreProcessing
+from ..classifier.models import Classifier
 
 # ------------------------------
 # Visualization tools
@@ -41,7 +40,7 @@ def plot_history(history):
 # ------------------------------
 # TRAIN
 # ------------------------------
-def train(corpus_file, model_file, config):
+def train(corpus_file, model_file, config, spec={}):
 	
 	# preprocess data
 	preprocessing = PreProcessing()
@@ -153,12 +152,10 @@ def train(corpus_file, model_file, config):
 	# SMALL TEST
 	if not len(y_test):
 		scores = model.evaluate(x_val, y_val, verbose=1)
-		print(scores)
 
 	# LARGE TEST
 	else: 
 		scores = model.evaluate(x_test, y_test, verbose=1)
-		print(scores)
 
 		# COMPUTE TDS ON TEST DATASET
 		tds = computeTDS(config, preprocessing, model, x_test)

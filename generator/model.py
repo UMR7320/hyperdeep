@@ -29,20 +29,31 @@ from tensorflow.python.client import device_lib
 
 class Language:
 	
-	def getModel(self, config, input_size, output_size):
+	def getModel(self, config, input_size, output_size, weights):
 
 		print("-"*20)
 		print("CREATE MODEL")
 		print("-"*20)
 		
 		# INPUTS
-		inputs = Input(shape=(input_size, output_size, ), dtype='float32')
+		inputs = Input(shape=(input_size, ), dtype='float32')
 		print("input",  inputs.shape)
+
+		# Embedding
+		embedding = Embedding(
+			config["VOCAB_SIZE"],
+			config["EMBEDDING_SIZE"],
+			input_length=config["WORD_LENGTH"],
+			weights=[weights],
+			trainable=True
+		)(inputs)
+
+		print("embedding",  embedding.shape)
 
 		# ----------
 		# LSTM LAYER
 		# ----------
-		rnn=Bidirectional(LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"]))(inputs)
+		rnn=Bidirectional(LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"]))(embedding)
 		#rnn=LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
 		#rnn=LSTM(int(config["LSTM_SIZE"]/2), return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn)
 		#rnn=LSTM(int(config["LSTM_SIZE"]/4), return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn)

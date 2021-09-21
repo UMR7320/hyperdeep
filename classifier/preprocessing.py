@@ -12,7 +12,7 @@ import pickle
 import re
 
 from keras.utils import np_utils
-from preprocess.w2vec import create_vectors
+from ..preprocess.w2vec import create_vectors
 
 # ----------------------------------------
 # Preprocess text from input file
@@ -29,7 +29,6 @@ class PreProcessing:
 		
 		print("loading data...")
 
-
 		# ------------------------
 		# GET NUMBER OF CHANNELS
 		# OLD WAY => DEPRECATED
@@ -41,7 +40,7 @@ class PreProcessing:
 
 		# NEW WAY
 		else:		
-			self.nb_channels = config["TG"].count(1)
+			self.nb_channels = config["TG"].count(1) + config["TG"].count(2)
 		# ------------------------
 
 		print("NB CHANNELS:", self.nb_channels)
