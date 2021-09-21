@@ -182,7 +182,6 @@ class PreProcessing:
 
 		# Compute attributes
 		self.dictionary["FORME"] = dictionary
-		self.indexes["FORME"] = indexes
 		self.sizeOfdictionary["FORME"] = sizeOfdictionary
 		self.sgrams["FORME"] = sgrams
 		self.lgrams["FORME"] = lgrams
