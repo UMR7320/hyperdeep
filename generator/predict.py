@@ -58,7 +58,7 @@ def generate(model_file, bootstrap_raw, log_file, config):
 
 	print("-LOAD MODEL-")
 	forme_model = load_model(model_file + "_FORME" + ".lang")
-	code_model = load_model(model_file + "_CODE" + ".lang")
+	#code_model = load_model(model_file + "_CODE" + ".lang")
 	text = ""
 	concate = []
 
