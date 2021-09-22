@@ -79,11 +79,11 @@ def generate(model_file, bootstrap_raw, log_file, config):
 		"""
 		predictions_code = list(code_model.predict(preprocessing.X["CODE"])[0])
 		max_pred = predictions_code.index(max(predictions_code))
-		prediction_code = preprocessing.reversedictionary["CODE"][max_pred]
+		prediction_code = preprocessing.indexes["CODE"][max_pred]
 		if prediction_code == "SPACE":
 			predictions_code[max_pred] = -1
 			max_pred = predictions_code.index(max(predictions_code))
-			prediction_code = preprocessing.reversedictionary["CODE"][max_pred]
+			prediction_code = preprocessing.indexes["CODE"][max_pred]
 		"""
 		
 		current_text = bootstrap["FORME"] + concate #[c[0] for c in concate]
@@ -91,7 +91,7 @@ def generate(model_file, bootstrap_raw, log_file, config):
 		ttl = 0
 		while ttl < 100:
 			max_pred = predictions.index(max(predictions))
-			prediction = preprocessing.reversedictionary["FORME"][max_pred]
+			prediction = preprocessing.indexes["FORME"][max_pred]
 			#text = " ".join(current_text + [prediction])
 			#doc = list(preprocessing.nlp(text))
 			#code = preprocessing.get_code(doc[-1])			

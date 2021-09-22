@@ -32,15 +32,17 @@ class PreProcessing:
 		self.nlp = spacy.load("fr_core_news_sm", exclude=["ner", "parser"])
 		try:
 			self.dictionary = {}
+			self.indexes = {}
 			self.sizeOfdictionary = {}
 			self.sgram = {}
 			self.lgram = {}
 
-			for wtype in ["FORME", "CODE"]:
+			for wtype in ["FORME"]:#, "CODE"]:
 				with open(model_name + "_" + wtype + ".index", 'rb') as handle:
 					print("OPEN EXISTING DICTIONARY:", model_name + ".index")
 					self.dictionary[wtype] = pickle.load(handle)
 					self.sizeOfdictionary[wtype] = len(self.dictionary.keys())
+					self.indexes[wtype] = {v: k for k, v in self.dictionary[wtype].items()}
 
 				with open(model_name + "_" + wtype + ".sgram", 'rb') as handle:
 					print("OPEN EXISTING SGRAM:", model_name + ".index")
@@ -273,21 +275,18 @@ class PreProcessing:
 	def loadSequence(self, bootstrap, config, concate=[]):   
 
 		self.X = {}
-		self.reversedictionary = {}
 		#for i, wtype in enumerate(["FORME", "CODE"]):
 		for i, wtype in enumerate(["FORME"]):
-
-			self.reversedictionary[wtype] = {v: k for k, v in self.dictionary[wtype].items()}
 
 			# Load index
 			WORD_LENGTH = config["WORD_LENGTH"]
 
 			# compute X_bootstrap
-			self.X[wtype] = np.zeros((1, WORD_LENGTH, len(self.dictionary[wtype].keys())), dtype=bool)
+			self.X[wtype] = np.zeros((1, WORD_LENGTH), dtype=int)
 			text = bootstrap[wtype] + concate #[c[i] for c in concate]
 			text = text[-WORD_LENGTH:]
 			for j, each_word in enumerate(text):
 				try:
-					self.X[wtype][0, j, self.dictionary[wtype][each_word]] = 1
+					self.X[wtype][0, j] = self.dictionary[wtype][each_word]
 				except:
-					self.X[wtype][0, j, 0] = 1
+					self.X[wtype][0, j] = self.dictionary[wtype]["PAD"]
