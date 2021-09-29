@@ -51,9 +51,16 @@ class Language:
 		print("embedding",  embedding.shape)
 
 		# ----------
+		# CNN LAYERS
+		# ----------
+		conv = Conv1D(filters=256, strides=1, kernel_size=4, padding='same', kernel_initializer='normal', activation='relu')(embedding)
+		conv = Conv1D(filters=256, strides=1, kernel_size=3, padding='same', kernel_initializer='normal', activation='relu')(conv)
+		conv = Conv1D(filters=256, strides=1, kernel_size=2, padding='same', kernel_initializer='normal', activation='relu')(conv)
+
+		# ----------
 		# LSTM LAYER
 		# ----------
-		rnn=Bidirectional(LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"]))(embedding)
+		rnn=Bidirectional(LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"]))(conv)
 		#rnn=LSTM(config["LSTM_SIZE"], return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(inputs)
 		#rnn=LSTM(int(config["LSTM_SIZE"]/2), return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn)
 		#rnn=LSTM(int(config["LSTM_SIZE"]/4), return_sequences=True, dropout=config["DROPOUT_VAL"], recurrent_dropout=config["DROPOUT_VAL"])(rnn)
