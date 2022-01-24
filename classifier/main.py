@@ -176,14 +176,15 @@ def train(corpus_file, model_file, config, spec={}):
 					word_tds = word[channel][word_str][classe_id]
 					results[classe_name] = results.get(classe_name, {})
 					results[classe_name][i] = results[classe_name].get(i, 0)
-					results[classe_name][i] += abs(word_tds)
+					if word_tds > 0:
+						results[classe_name][i] += abs(word_tds)
 				nb_words[classe_name] = nb_words.get(classe_name, 0) + 1
 
 		for classe in classes:
 			print(classe, nb_words[classe])
 			try:
 				for channel, value in results[classe].items():
-						print(value/nb_words[classe], end="\t")
+						print(value/len(results[classe][channel]), end="\t")
 			except:
 				print("no data...")
 				break
