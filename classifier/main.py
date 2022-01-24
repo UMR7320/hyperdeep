@@ -179,7 +179,7 @@ def train(corpus_file, model_file, config, spec={}):
 					results[classe_name][i] = results[classe_name].get(i, 0)
 					if word_tds > 0:
 						results[classe_name][i] += abs(word_tds)
-				 		nb_words[classe_name][i] = nb_words[classe_name].get(i, 0) + 1
+						nb_words[classe_name][i] = nb_words[classe_name].get(i, 0) + 1
 
 		for classe in classes:
 			print(classe, nb_words[classe])
