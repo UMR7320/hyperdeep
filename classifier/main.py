@@ -187,7 +187,7 @@ def train(corpus_file, model_file, config, spec={}):
 						print(value/len(results[classe][channel]), end="\t")
 			except:
 				raise
-				print("no data...")
+				print(0, end="\t")
 				continue
 			print("\n" + "-"*5)
 	return scores
