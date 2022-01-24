@@ -85,7 +85,8 @@ def train(corpus_file, model_file, config, spec={}):
 
 	# GET WORD EMBEDDINGS
 	x_data = []
-	for vocab_size in config["vocab_size"]:
+	for i, vocab_size in enumerate(config["vocab_size"]):
+		if not config["TG"][i]: continue;
 		x_entry = []
 		entry = []
 		for word_index in range(config["vocab_size"][0]):
@@ -175,7 +176,7 @@ def train(corpus_file, model_file, config, spec={}):
 					word_tds = word[channel][word_str][classe_id]
 					results[classe_name] = results.get(classe_name, {})
 					results[classe_name][i] = results[classe_name].get(i, 0)
-					results[classe_name][i] += word_tds
+					results[classe_name][i] += abs(word_tds)
 				nb_words[classe_name] = nb_words.get(classe_name, 0) + 1
 
 		for classe in classes:
@@ -270,27 +271,28 @@ def computeTDS(config, preprocessing, classifier, x_data):
 					# -----------------------------------
 					# TDS CALCULATION
 					# -----------------------------------
-					# OLD VERSION (TDS)
-					#_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
-					#tds_value = []
-					#for classe in config["CLASSES"]:
-					#	tds_value += [_tds_value]
+					if config.get("OLD", False):
+						# OLD VERSION (TDS)
+						_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+						tds_value = []
+						for classe in config["CLASSES"]:
+							tds_value += [_tds_value]
+					else:
+						# NEW VERSION (wTDS)
+						tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
+						tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
+						from_i = (i*tds_size*preprocessing.nb_channels) + (channel*tds_size)
+						to_j = from_i + tds_size
+						weight1 = dense_weights[0][from_i:to_j,:]
+						vec = np.dot(tds1, weight1) + dense_bias[0]
 
-					# NEW VERSION (wTDS)
-					tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
-					tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
-					from_i = (i*tds_size*preprocessing.nb_channels) + (channel*tds_size)
-					to_j = from_i + tds_size
-					weight1 = dense_weights[0][from_i:to_j,:]
-					vec = np.dot(tds1, weight1) + dense_bias[0]
+						vec2 = vec * (vec>0) # RELU
 
-					vec2 = vec * (vec>0) # RELU
-
-					weight2 = dense_weights[1]
-					#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
-					tds_value = np.dot(vec2, weight2) + dense_bias[1]
-					tds_value *= 100
-					tds_value = tds_value.tolist()
+						weight2 = dense_weights[1]
+						#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
+						tds_value = np.dot(vec2, weight2) + dense_bias[1]
+						tds_value *= 100
+						tds_value = tds_value.tolist()
 					
 				# GET WORD STR
 				index = x_data[channel][sentence_nb][i]

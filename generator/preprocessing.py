@@ -30,7 +30,7 @@ class PreProcessing:
 	def __init__(self, model_name):
 		self.model_name = model_name
 		print("SPACY LOAD")
-		self.nlp = spacy.load("fr_core_news_md", exclude=["ner", "parser"])
+		self.nlp = spacy.load("fr_core_news_lg", exclude=["ner", "parser"])
 		try:
 			self.dictionary = {}
 			self.indexes = {}
@@ -101,6 +101,8 @@ class PreProcessing:
 			freqDist = FreqDist(self.text[wtype])
 			most_commont_list = [entry[0] for entry in freqDist.most_common(config["VOCAB_SIZE"])]
 			print(most_commont_list[:10])
+
+			print("VOCAB_SIZE", config["VOCAB_SIZE"])
 
 			# CREATE DICTIONARY
 			print("Create dictionary...")

@@ -23,12 +23,11 @@ from nltk import ngrams
 # ------------------------------
 def generate(model_file, bootstrap_raw, result_file, config):
 
-	jalons = [["merci", "remercie", "remercier", "remercierai", "saluer", "salut", "vous", "peuple", "choisir", "choix"], 
-	["histoire", "élection", "voter", "vote", "campagne", "présidentielle", "présidentiel", "prédécesseurs", "président", "présidents", "Gaulle", "Pompidou", "Giscard", "Mitterrand", "Chirac", "Sarkozy", "Hollande"], 
-	["France", "monde", "Europe", "liberté", "libre", "Etat", "social", "sociale", "société", "transformation", "transformations", "famille", "travail"], 
-	["poursuivrai", "servirai", "transformation", "transformations", "changer", "changement", "confiance", "génération", "générations"]]
+	jalons = [["conclusion", "conclure", "deep", "learning", "conclusion"], 
+	["travaux", "remarques", "deep", "learning", "ADT", "semble", "IA", "intertextuels"], 
+	["perspective", "TDS", "nouveaux", "observables", "linguistiques"]]
 	j=0
-	textgen_size = 50
+	textgen_size = 100
 
 	print("GENERATE", model_file)
 	environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -55,7 +54,7 @@ def generate(model_file, bootstrap_raw, result_file, config):
 
 	# LOG FILE (update results)
 	result_data = json.load(open(result_file, "r"))
-	result_data["data"]  = bootstrap_raw
+	result_data["data"] = bootstrap_raw
 
 	# Get spec
 	print("LOAD SPEC")
@@ -86,9 +85,7 @@ def generate(model_file, bootstrap_raw, result_file, config):
 		predictions_code = list(code_model.predict(preprocessing.X["CODE"])[0])
 		max_pred = predictions_code.index(max(predictions_code))
 		prediction_code = preprocessing.indexes["CODE"][max_pred]
-		
 		if prediction_code == "SPACE":
-		#while random.randint(0,10) < 8: 
 			predictions_code[max_pred] = -1
 			max_pred = predictions_code.index(max(predictions_code))
 			prediction_code = preprocessing.indexes["CODE"][max_pred]
@@ -96,34 +93,37 @@ def generate(model_file, bootstrap_raw, result_file, config):
 		current_text = bootstrap["FORME"] + concate["FORME"] #[c[0] for c in concate]
 
 		# Jalons conditions
-		ttl = 0
 		if j < len(jalons):
-			if i + random.randint(0,int(textgen_size/10)) > (textgen_size/len(jalons))*(j+1):
+			if len(current_text) + random.randint(0,int(textgen_size/10)) > (textgen_size/len(jalons))*(j+1):
 				if current_text[-1] == ".":
-					current_text += ["__PARA__\n", "__PARA__\n"]
+					print("\n")
+					result_data["data"] += "\n\n"
 					j += 1
 			else:
 				for p, jalon in enumerate(jalons[j]):
-					if tuple(current_text[-2:] + [jalon]) in preprocessing.sgram["FORME"]:
-						prediction = jalon
-						#del jalons[j][p]
-						print_jalon = True
-						break
-
+					jalon = jalon.split()
+					if tuple(current_text[-2:] + [jalon[-1]]) in preprocessing.sgram["FORME"]:
+						if len(jalon) == 1 or jalon[-len(jalon):-1] == current_text[-(len(jalon)-1):]:
+							prediction = jalon[-1]
+							del jalons[j][p]
+							print_jalon = True
+							break
+		ttl = 0
 		while ttl < 100 and not print_jalon:
 			max_pred = predictions.index(max(predictions))
 			prediction = preprocessing.indexes["FORME"][max_pred]
+
 			text = " ".join(current_text + [prediction])
 			doc = list(preprocessing.nlp(text))
-			code = preprocessing.get_code(doc[-1])			
+			code = preprocessing.get_code(doc[-1])	
 
 			# CONDITIONS :
 			# ------------
 
 			# NGRAM
-			#cond1 = tuple(current_text[-(config["WORD_LENGTH"]-1):] + [prediction]) in preprocessing.lgram["FORME"]
+			cond1 = tuple(current_text[-(config["WORD_LENGTH"]-1):] + [prediction]) in preprocessing.lgram["FORME"]
 			#cond1 = tuple(current_text[-2:] + [prediction]) in preprocessing.sgram["FORME"]
-			cond1 = code == prediction_code
+			#cond1 = code == prediction_code
 
 			# AVOID LOOP
 			current_ngram = list(ngrams(current_text, 3))
@@ -136,8 +136,10 @@ def generate(model_file, bootstrap_raw, result_file, config):
 				give_a_chance = [5, 5]
 			cond2 = not tuple(current_text[-2:] + [prediction]) in  current_ngram or (len(prediction) > 4 and random.choices([0, 1], weights=give_a_chance, k=1)[0])
 			
-			#if cond1 and cond2: break
-			if cond1: break
+			#break
+			#if cond1: break
+			#if cond2: break
+			if cond1 and cond2: break
 			
 			# Next loop
 			predictions[max_pred] = -1
@@ -147,8 +149,9 @@ def generate(model_file, bootstrap_raw, result_file, config):
 		# NOT PREDICTION MATCH
 		# GET RANDOM NGRAM
 		if ttl == 100:
-			print("TLL == 100")
-			break # need to add CODE to concate
+			#print("TLL == 100")
+			#break
+			"""
 			concate["FORME"] += ["."]
 			result_data["data"] += " ."
 			random.shuffle(preprocessing.lgram["FORME"])
@@ -158,11 +161,10 @@ def generate(model_file, bootstrap_raw, result_file, config):
 					prediction = gram
 					if any(w in jalons[j] for w in gram):
 						break
-			concate["FORME"] += [prediction]
+			concate["FORME"] += prediction
 			for word in prediction:
 				print(colored(word, 'cyan'), end=' ', flush=True)
 				result_data["data"] += " " + word
-
 			"""
 			random.shuffle(preprocessing.lgram["FORME"])
 			prediction = False
@@ -172,7 +174,7 @@ def generate(model_file, bootstrap_raw, result_file, config):
 					break
 			if prediction:
 				#print("add lgram")
-				concate = concate[:-3] + list(prediction)
+				concate["FORME"] = concate["FORME"][:-3] + list(prediction)
 				for word in prediction[3:]:
 					print(colored(word, 'cyan'), end=' ', flush=True)
 					result_data["data"] += " " + word
@@ -183,7 +185,7 @@ def generate(model_file, bootstrap_raw, result_file, config):
 					if current_text[-2:] == list(gram[:2]):
 						prediction = gram
 						break
-				concate = concate[:-2] + list(prediction)
+				concate["FORME"] = concate["FORME"][:-2] + list(prediction)
 				#if (prediction == preprocessing.sgram["FORME"][0]):
 				#	print("add RANDOM sgram")
 				#else:
@@ -191,7 +193,6 @@ def generate(model_file, bootstrap_raw, result_file, config):
 				for word in prediction[2:]:
 					print(colored(word, 'cyan'), end=' ', flush=True)
 					result_data["data"] += " " + word
-			"""
 		# --------------------------------------------------------
 		else:
 			# APPEND FORME
@@ -199,8 +200,9 @@ def generate(model_file, bootstrap_raw, result_file, config):
 			if print_jalon:
 				print(colored(prediction, 'red'), end=' ', flush=True)
 			else:
-				print(prediction, end='', flush=True)
-				print(colored(":" + prediction_code, 'yellow'), end=' ', flush=True)
+				print(prediction, end=' ', flush=True)
+				#print(prediction, end='', flush=True)
+				#print(colored(":" + prediction_code, 'yellow'), end=' ', flush=True)
 			concate["FORME"] += [prediction]
 
 			# APPEND CODE
@@ -211,13 +213,14 @@ def generate(model_file, bootstrap_raw, result_file, config):
 
 		# WRITE CURRENT TEXT IN A LOG FILE
 		result_data["data"] = reverse_tokenizing(result_data["data"])
+
 		try:
 			open(result_file, "w").write(json.dumps(result_data))
 		except:
 			pass
 
 	print("\n")
-	return " ".join(bootstrap["FORME"]) + " ".join(concate)
+	return " ".join(bootstrap["FORME"]) + " ".join(concate["FORME"])
 
 # ------------------------------
 # TOOLS
