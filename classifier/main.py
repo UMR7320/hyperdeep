@@ -160,9 +160,10 @@ def train(corpus_file, model_file, config, spec={}):
 
 		# COMPUTE TDS ON TEST DATASET
 		tds = computeTDS(config, preprocessing, model, x_test)
-		nb_words = {}
+		#nb_words = {}
 		results = {}
 		classes = config["CLASSES"]
+		nb_words = {}
 		for entry in tds:
 	        
 			# PREDICTED CLASS
@@ -172,20 +173,20 @@ def train(corpus_file, model_file, config, spec={}):
 
 			results[classe_name] = results.get(classe_name, {})
 			for word in entry[0]:
-				nb_words[classe_name] = nb_words.get(classe_name, {})
+				#nb_words[classe_name] = nb_words.get(classe_name, {})
 				for i, channel in enumerate(range(len(word))):
 					word_str = next(iter(word[channel]))
 					word_tds = word[channel][word_str][classe_id]
 					results[classe_name][i] = results[classe_name].get(i, 0)
-					if word_tds > 0:
-						results[classe_name][i] += abs(word_tds)
-						nb_words[classe_name][i] = nb_words[classe_name].get(i, 0) + 1
+					#if word_tds > 0:
+					results[classe_name][i] += abs(word_tds)
+					#nb_words[classe_name][i] = nb_words[classe_name].get(i, 0) + 1
+				nb_words[classe_name] = nb_words.get(classe_name, 0) + 1
 
 		for classe in classes:
-			print(classe, nb_words[classe])
 			try:
 				for channel, value in results[classe].items():
-						print(value/nb_words[classe_name][channel], end="\t")
+						print(value/nb_words[classe_name], end="\t")
 			except:
 				print(0, end="\t")
 				continue
