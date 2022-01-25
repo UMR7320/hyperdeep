@@ -184,6 +184,7 @@ def train(corpus_file, model_file, config, spec={}):
 				nb_words[classe_name] = nb_words.get(classe_name, 0) + 1
 
 		for classe in classes:
+			print(classe)
 			try:
 				for channel, value in results[classe].items():
 						print(value/nb_words[classe_name], end="\t")
