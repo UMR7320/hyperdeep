@@ -163,36 +163,42 @@ def train(corpus_file, model_file, config, spec={}):
 		tds = computeTDS(config, preprocessing, model, x_test)
 
 		results = {}
+		accurracy = {}
+		nb_words = {}
 		classes = config["CLASSES"]
-		for classe_name in classes:
-			results[classe_name] = results.get(classe_name, {})
-			for i in range(config["nb_channels"]):
-				results[classe_name][i] = results[classe_name].get(i, [])
-
 		for entry in tds:
 	        
 			# PREDICTED CLASS
 			classe_value = max(entry[1])
 			classe_id = entry[1].index(classe_value) # predicted_class
 			classe_name = classes[classe_id]
+			results[classe_name] = results.get(classe_name, {})
+			accurracy[classe_name] = accurracy.get(classe_name, 0) + classe_value
 
 			for i, channel in enumerate(range(len(entry[0][0]))):
-				results[classe_name][i] += [-9999]
+				results[classe_name][i] = results[classe_name].get(i, 0)
 				for word in entry[0]:
 					word_str = next(iter(word[channel]))
 					word_tds = word[channel][word_str][classe_id]
 
-					if word_tds > results[classe_name][i][-1]:
-						results[classe_name][i][-1] = word_tds
+					#if word_tds > results[classe_name][i][-1]:
+					#	results[classe_name][i][-1] = word_tds
+					results[classe_name][i] += word_tds
+					nb_words[classe_name] = nb_words.get(classe_name, {})
+					nb_words[classe_name][i] = nb_words[classe_name].get(i, 0) + 1
 
 		for classe_name in classes:
-			print(classe_name, len(results[classe_name][0]))
 			try:
-				for i, value in results[classe_name].items():
-					print(statistics.mean(results[classe_name][i]), end="\t")
+				print(classe_name, accurracy[classe_name]/len(tds))
+				try:
+					for i, value in results[classe_name].items():
+						print(results[classe_name][i]/nb_words[classe_name][i], end="\t")
+				except:
+					print(0, end="\t")
+				print("\n" + "-"*5)
 			except:
-				print(0, end="\t")
-			print("\n" + "-"*5)
+				print(classe_name, "no data...")
+				pass
 	return scores
 
 # ------------------------------
