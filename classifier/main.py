@@ -173,7 +173,9 @@ def train(corpus_file, model_file, config, spec={}):
 			classe_id = entry[1].index(classe_value) # predicted_class
 			classe_name = classes[classe_id]
 			results[classe_name] = results.get(classe_name, {})
-			accurracy[classe_name] = accurracy.get(classe_name, 0) + classe_value
+			accurracy[classe_name] = accurracy.get(classe_name, {})
+			accurracy[classe_name]["score"] = accurracy[classe_name].get("score", 0) + classe_value
+			accurracy[classe_name]["taille"] = accurracy[classe_name].get("taille", 0) + 1
 
 			for i, channel in enumerate(range(len(entry[0][0]))):
 				results[classe_name][i] = results[classe_name].get(i, 0)
@@ -189,7 +191,7 @@ def train(corpus_file, model_file, config, spec={}):
 
 		for classe_name in classes:
 			try:
-				print(classe_name, accurracy[classe_name]/len(tds))
+				print(classe_name, accurracy[classe_name]["score"]/accurracy[classe_name]["taille"])
 				try:
 					for i, value in results[classe_name].items():
 						print(results[classe_name][i]/nb_words[classe_name][i], end="\t")
