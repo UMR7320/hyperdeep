@@ -212,7 +212,7 @@ class PreProcessing:
 							skip_word = False
 							for f in config["FILTERS"]:
 								if not f.strip(): continue
-								if any(re.match(f, texts[t][i][j]) for t in range(self.nb_channels)):
+								if any(re.match(f, texts[t][i].split()[:config["SEQUENCE_SIZE"]][j]) for t in range(self.nb_channels)):
 									skip_word = True
 									break
 							if skip_word: 
