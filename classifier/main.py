@@ -286,7 +286,7 @@ def computeTDS(config, preprocessing, classifier, x_data):
 					# -----------------------------------
 					# TDS CALCULATION
 					# -----------------------------------
-					if True:#config.get("OLD", False):
+					if config.get("OLD", False):
 						# OLD VERSION (TDS)
 						_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
 						tds_value = []
