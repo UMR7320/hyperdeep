@@ -306,7 +306,9 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						#print("len:", len(dense_weights[0]))
 						#print("-"*50)
 						weight1 = dense_weights[0][from_i:to_j,:]
-						vec = np.dot(tds1, weight1)# + dense_bias[0][from_i:to_j,:]
+						#print(np.shape(tds1), np.shape(weight1), np.shape(dense_bias[0]))
+						vec = np.dot(tds1, weight1)# + dense_bias[0]
+						#print(np.shape(vec))
 
 						vec2 = vec * (vec>0) # RELU
 
