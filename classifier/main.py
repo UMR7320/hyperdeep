@@ -173,6 +173,7 @@ def train(corpus_file, model_file, config, spec={}):
 			classe_id = entry[1].index(classe_value) # predicted_class
 			classe_name = classes[classe_id]
 			results[classe_name] = results.get(classe_name, {})
+
 			accurracy[classe_name] = accurracy.get(classe_name, {})
 			accurracy[classe_name]["score"] = accurracy[classe_name].get("score", 0) + classe_value
 			accurracy[classe_name]["taille"] = accurracy[classe_name].get("taille", 0) + 1
@@ -272,7 +273,8 @@ def computeTDS(config, preprocessing, classifier, x_data):
 
 		total = {}	
 		
-		for i in range(len(x_data[0][sentence_nb])):
+		sentence_size = len(x_data[0][sentence_nb])
+		for i in range(sentence_size):
 			
 			# GET TDS VALUES
 			word = []
@@ -294,8 +296,13 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						# NEW VERSION (wTDS)
 						tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
 						tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
-						from_i = (i*tds_size*preprocessing.nb_channels) + (channel*tds_size)
+						#print(i, tds_size, channel, "/", preprocessing.nb_channels)
+						from_i = channel*tds_size*sentence_size # OFFSET => Select channel
+						from_i = from_i + (i*tds_size)
 						to_j = from_i + tds_size
+						#print("from:", from_i)
+						#print("to:", to_j)
+						#print("-"*50)
 						weight1 = dense_weights[0][from_i:to_j,:]
 						vec = np.dot(tds1, weight1) + dense_bias[0]
 
