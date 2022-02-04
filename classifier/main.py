@@ -286,7 +286,7 @@ def computeTDS(config, preprocessing, classifier, x_data):
 					# -----------------------------------
 					# TDS CALCULATION
 					# -----------------------------------
-					if config.get("OLD", False):
+					if True:#config.get("OLD", False):
 						# OLD VERSION (TDS)
 						_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
 						tds_value = []
@@ -294,7 +294,8 @@ def computeTDS(config, preprocessing, classifier, x_data):
 							tds_value += [_tds_value]
 					else:
 						# NEW VERSION (wTDS)
-						tds_size = np.size(tds[-1],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
+						#print("channel", -(preprocessing.nb_channels-channel))
+						tds_size = np.size(tds[-(preprocessing.nb_channels-channel)],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
 						tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 						#print(i, tds_size, channel, "/", preprocessing.nb_channels)
 						from_i = channel*tds_size*sentence_size # OFFSET => Select channel
@@ -302,6 +303,7 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						to_j = from_i + tds_size
 						#print("from:", from_i)
 						#print("to:", to_j)
+						#print("len:", len(dense_weights[0]))
 						#print("-"*50)
 						weight1 = dense_weights[0][from_i:to_j,:]
 						vec = np.dot(tds1, weight1) + dense_bias[0]
