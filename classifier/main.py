@@ -296,6 +296,32 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						# NEW VERSION (wTDS)
 						#print("channel", -(preprocessing.nb_channels-channel))
 						tds_size = np.size(tds[-(preprocessing.nb_channels-channel)],2) # => nb filters of the last conv layer (output size) (old version : config["EMBEDDING_DIM"])
+						word_tds = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
+						
+						# FIRST HIDDEN LAYER
+						vec = False
+						from_i = channel*tds_size*sentence_size # OFFSET => Select channel
+						to_j = from_i + tds_size*sentence_size
+						for t in range(from_i, to_j, tds_size):
+							#print(channel, i, t, from_i, to_j)
+							weight = dense_weights[0][t:t+tds_size,:]
+							try:
+								vec += np.dot(word_tds, weight)
+							except:
+								vec = np.dot(word_tds, weight)
+						#from_i = channel*tds_size*sentence_size # OFFSET => Select channel
+						#from_i = from_i + (i*tds_size)
+						#to_j = from_i + tds_size
+						#weight = dense_weights[0][from_i:to_j,:]
+						#vec = np.dot(word_tds, weight)
+						vec = vec * (vec>0) # RELU
+
+						# LAST HIDDEN LAYER
+						tds_value = np.dot(vec, dense_weights[1])						
+						tds_value *= 100
+						tds_value = tds_value.tolist()
+
+						"""
 						tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 						#print(i, tds_size, channel, "/", preprocessing.nb_channels)
 						from_i = channel*tds_size*sentence_size # OFFSET => Select channel
@@ -303,20 +329,25 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						to_j = from_i + tds_size
 						#print("from:", from_i)
 						#print("to:", to_j)
-						#print("len:", len(dense_weights[0]))
-						#print("-"*50)
 						weight1 = dense_weights[0][from_i:to_j,:]
 						#print(np.shape(tds1), np.shape(weight1), np.shape(dense_bias[0]))
+						#print("tds1", tds1)
+						#print("weight1", weight1)
+						#print("dense_bias", dense_bias)
 						vec = np.dot(tds1, weight1)# + dense_bias[0]
+						#print("vec", vec)
 						#print(np.shape(vec))
 
-						vec2 = vec * (vec>0) # RELU
+						#vec2 = vec * (vec>0) # RELU
+						#print("vec2", vec2)
+						#print("-"*50)
 
-						weight2 = dense_weights[1]
+						#weight2 = dense_weights[1]
 						#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
-						tds_value = np.dot(vec2, weight2)# + dense_bias[1]
-						tds_value *= 100
-						tds_value = tds_value.tolist()
+						#tds_value = np.dot(vec2, weight2)# + dense_bias[1]
+						#tds_value *= 100
+						#tds_value = tds_value.tolist()
+						"""
 					
 				# GET WORD STR
 				index = x_data[channel][sentence_nb][i]
