@@ -299,6 +299,7 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						word_tds = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
 						
 						# FIRST HIDDEN LAYER
+						"""
 						vec = False
 						from_i = channel*tds_size*sentence_size # OFFSET => Select channel
 						to_j = from_i + tds_size*sentence_size
@@ -309,11 +310,13 @@ def computeTDS(config, preprocessing, classifier, x_data):
 								vec += np.dot(word_tds, weight)
 							except:
 								vec = np.dot(word_tds, weight)
-						#from_i = channel*tds_size*sentence_size # OFFSET => Select channel
-						#from_i = from_i + (i*tds_size)
-						#to_j = from_i + tds_size
-						#weight = dense_weights[0][from_i:to_j,:]
-						#vec = np.dot(word_tds, weight)
+						"""
+						from_i = channel*tds_size*sentence_size # OFFSET => Select channel
+						from_i = from_i + (i*tds_size)
+						to_j = from_i + tds_size
+						weight = dense_weights[0][from_i:to_j,:]
+						vec = np.dot(word_tds, weight)
+						
 						vec = vec * (vec>0) # RELU
 
 						# LAST HIDDEN LAYER
