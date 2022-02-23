@@ -323,6 +323,12 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						tds_value = np.dot(vec, dense_weights[1])						
 						tds_value *= 100
 						tds_value = tds_value.tolist()
+						_tds_value = sum(tds[-(channel+1)][sentence_nb][i])
+						for t in range(len(tds_value)):
+							if tds_value[t]<0:
+								tds_value[t] = -_tds_value
+							else:
+								tds_value[t] = _tds_value
 
 						"""
 						tds1 = tds[-(preprocessing.nb_channels-channel)][sentence_nb][i]
