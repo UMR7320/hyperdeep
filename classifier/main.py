@@ -320,6 +320,7 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						vec = vec * (vec>0) # RELU
 
 						# LAST HIDDEN LAYER
+						"""
 						tds_value = np.dot(vec, dense_weights[1])						
 						tds_value *= 100
 						tds_value = tds_value.tolist()
@@ -347,16 +348,15 @@ def computeTDS(config, preprocessing, classifier, x_data):
 						#print("vec", vec)
 						#print(np.shape(vec))
 
-						#vec2 = vec * (vec>0) # RELU
+						vec2 = vec * (vec>0) # RELU
 						#print("vec2", vec2)
 						#print("-"*50)
 
-						#weight2 = dense_weights[1]
+						weight2 = dense_weights[1]
 						#tds_value = np.dot(vec2, weight2)[prediction_index] + dense_bias[1][prediction_index]
-						#tds_value = np.dot(vec2, weight2)# + dense_bias[1]
+						tds_value = np.dot(vec2, weight2)# + dense_bias[1]
 						#tds_value *= 100
-						#tds_value = tds_value.tolist()
-						"""
+						tds_value = tds_value.tolist()
 					
 				# GET WORD STR
 				index = x_data[channel][sentence_nb][i]
