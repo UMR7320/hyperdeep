@@ -8,6 +8,7 @@ import sys
 import os
 import json
 
+from classifier.preprocessing import PreProcessing
 from classifier.main import train, predict
 from preprocess.w2vec import create_vectors, get_most_similar
 
@@ -26,30 +27,42 @@ def get_args():
     args = {}
     for i in range(2, len(sys.argv[1:])+1):
         if sys.argv[i][0] == "-":
-            args[sys.argv[i]] = sys.argv[i+1]
+            try:
+                args[sys.argv[i]] = sys.argv[i+1]
+            except:
+                args[sys.argv[i]] = True
         else:
             args[i] = sys.argv[i]
     return args
 
 if __name__ == '__main__':
-    print()
 
     # GET COMMAND
     try:
         command = sys.argv[1]
-        if command not in ["skipgram", "nn", "train", "predict"]:
+        if command not in ["word2vec", "nn", "train", "predict"]:
             raise
     except:
         print_help()
         exit()
 
+    # GET CONFIG FILE
+    try:
+        config = json.loads(open("config.json", "r").read())
+    except:
+        print("Error: no config file found")
+        exit()
+
     # EXECT COMMAND
-    if command == "skipgram":
+    if command == "word2vec":
         try:
             args = get_args()
             corpus_file = args["-input"]
             vectors_file = args["-output"]
-            create_vectors(corpus_file, vectors_file)
+
+            preprocessing = PreProcessing()
+            preprocessing.loadData(corpus_file, vectors_file, config)
+            preprocessing.loadEmbeddings(vectors_file, config)
         except:
             print_invalidArgs_mess()
             print("The following arguments are mandatory:\n")
@@ -64,15 +77,16 @@ if __name__ == '__main__':
             model = args[2]
             word = args[3]
             most_similar_list = get_most_similar(word, model)
+            for neighbor in most_similar_list:
+                print(neighbor[0], neighbor[1])
 
             # save predictions in a file
-            result_path = "results/" + os.path.basename(model) + ".res"
+            result_path = "results/" + os.path.basename(model) + ".nn"
             results = open(result_path, "w")
             results.write(json.dumps(most_similar_list))
             results.close()
 
         except:
-            raise
             print_invalidArgs_mess()
             print("usage: python hyperdeep.py nn <model> <word>\n")
             print("\tmodel\ttmodel filename")
@@ -86,33 +100,10 @@ if __name__ == '__main__':
             corpus_file = args["-input"]
             model_file = args["-output"]
 
-            # GET CONFIG FILE
-            try:
-                config = json.loads(open(corpus_file + ".config", "r").read())
-            except:
-                config = json.loads(open("config.json", "r").read())
-
-            # GET SPEC FILE
-            try:
-                config["Z_SCORE"] = json.loads(open(corpus_file + ".spec", "r").read())
-            except:
-                config["Z_SCORE"] = {}
-
             # TRAIN
             scores = train(corpus_file, model_file, config)
-            config["loss"] = scores[0]*100 # Loss
-            config["acc"] = scores[1]*100 # Accuracy
-
-            # SAVE CONFIG FILE
-            with open(model_file + ".spec", "w") as spec: 
-                json.dump(config["Z_SCORE"], spec) 
-            del config["Z_SCORE"]
-            config_json = open(model_file + ".config", "w")
-            config_json.write(json.dumps(config))
-            config_json.close()
 
         except:
-            raise
             print_invalidArgs_mess()
             print("The following arguments are mandatory:\n")
             print("\t-input\ttraining file path")
@@ -127,17 +118,22 @@ if __name__ == '__main__':
         try:
             args = get_args()
             model_file = args[2]
-            vectors_file = args[3] # REMOVE THIS PARAMETERS
-            text_file = args[4]
-            config = json.loads(open(model_file + ".config", "r").read())
+            text_file = args[3]
+
+            config["ANALYZER"] = []
             if "-lime" in args.keys():
-                config["ENABLE_LIME"] = args["-lime"]
-            else:
-                config["ENABLE_LIME"] = False
+                config["ANALYZER"] += ["LIME"]
+            
+            if "-tds" in args.keys():
+                config["ANALYZER"] += ["TDS"]
+
+            if "-wtds" in args.keys():
+                config["ANALYZER"] += ["wTDS"]
+
             predictions = predict(text_file, model_file, config)
 
             # save predictions in a file
-            result_path = "results/" + os.path.basename(text_file) + ".res"
+            result_path = "results/" + os.path.basename(text_file) + ".pred"
             results = open(result_path, "w")
             results.write(json.dumps(predictions))
             results.close()
@@ -145,7 +141,7 @@ if __name__ == '__main__':
         except:
             raise
             print_invalidArgs_mess()
-            print("usage: hyperdeep predict <model> <vec> <test-data>:\n")
+            print("usage: hyperdeep predict <model> <test-data>:\n")
             print("\t<model>\tmodel file path\n")
             print("\t<vec>\tword vector representations file path\n")
             print("\t<test-data>\ttest data file path\n")

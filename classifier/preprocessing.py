@@ -12,7 +12,7 @@ import pickle
 import re
 
 from keras.utils import np_utils
-from ..preprocess.w2vec import create_vectors
+from preprocess.w2vec import create_vectors
 
 # ----------------------------------------
 # Preprocess text from input file
@@ -25,87 +25,78 @@ class PreProcessing:
 	# ----------------------------------------
 	# Load data from file
 	# ----------------------------------------
-	def loadData(self, corpus_file, model_file, config, getLabels, createDictionary):   
+	def loadData(self, corpus_file, model_file, config):   
 		
 		print("loading data...")
-
-		# ------------------------
-		# GET NUMBER OF CHANNELS
-		# OLD WAY => DEPRECATED
-		if isinstance(config["TG"], int):
-			if config["TG"] > 0:
-				self.nb_channels = 3
-			else:
-				self.nb_channels = 1
-
-		# NEW WAY
-		else:		
-			self.nb_channels = config["TG"].count(1) + config["TG"].count(2)
-		# ------------------------
-
-		print("NB CHANNELS:", self.nb_channels)
+		print("NB CHANNELS:", config["nb_channels"])
 		
-		f = open(corpus_file, "r")
-		lines = f.readlines()
 		self.corpus_file = corpus_file
-		self.raw_text = []
+		self.raw_texts = []
+		self.channel_texts = {}
 
+		getLabels = False
+		createDictionary = False
 		label_dic = {}
 		labels = []
-		texts = {}
+
+		f = open(corpus_file, "r")
+		lines = f.readlines()
+
 		cpt = 0
 		t0 = time.time()
-
+		print("-"*50)
+		print("PREPROCESS SAMPLES")
+		print("-"*50)
 		for line in lines:
 			if "--" in line: continue
 
 			if cpt%100 == 0:
 				t1 = time.time()
-				print(cpt, "/", len(lines))
+				print("sample", cpt, "/", len(lines))
 				t0 = t1
 
 			# LABELS
-			if getLabels:
-				label = line.split("__ ")[0].replace("__", "")
-				label_int = config["CLASSES"].index(label)
-				labels += [label_int]
-				line = line.replace("__" + label + "__ ", "")
+			if line[:2] == "__" and line[2:8] != "PARA__":
+				try:
+					getLabels = True
+					createDictionary = True
+					label = line.split("__ ")[0].replace("__", "")
+					label_int = config["CLASSES"].index(label)
+					labels += [label_int]
+					line = line.replace("__" + label + "__ ", "")
+				except:
+					print("error with line:", line)
+
+			self.raw_texts += [line]
 
 			# TEXT
 			sequence = []
-			for i in range(self.nb_channels):
-				sequence += [""]
+			for i in range(config["nb_channels"]):
+				sequence += [[]]
 
 			for token in line.split():
-				self.raw_text += [token]
 				args = token.split("**")
-				for i in range(len(sequence)):
+				for i in range(config["nb_channels"]):
 					try:
 						if not args[i]:
-							sequence[i] += "PAD "
+							sequence[i] += [PAD]
 						else:
-							sequence[i] += args[i] + " "
+							sequence[i] += [args[i]]
 					except:
 						sequence[i] += "PAD "
 
-			for i in range(len(sequence)):
-				texts[i] = texts.get(i, [])
-				texts[i].append(sequence[i])
+			for i in range(config["nb_channels"]):
+				self.channel_texts[i] = self.channel_texts.get(i, [])
+				self.channel_texts[i].append(sequence[i])
 		
 			cpt += 1
 		f.close()
-
-		for i, text in texts.items():
-			f = open(corpus_file + "." + str(i), "w")
-			for sequence in text:
-				f.write(sequence + "\n")
-			f.close()
-		
+	
 		#print("DETECTED LABELS :")
 		#print(label_dic)
 		self.num_classes = len(config["CLASSES"])
 
-		dictionaries, datas = self.tokenize(texts, model_file, createDictionary, config)
+		dictionaries, datas = self.tokenize(model_file, createDictionary, config)
 
 		for i, dictionary in enumerate(dictionaries):
 			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
@@ -140,20 +131,18 @@ class PreProcessing:
 	# ----------------------------------------
 	# Load existing embedding
 	# ----------------------------------------
-	def loadEmbeddings(self, model_file, config, create_v = False):
+	def loadEmbeddings(self, model_file, config):
 
 		print("LOADING WORD2VEC EMBEDDING")
-		
+		create_vectors(self.channel_texts, model_file, config)
+
+		# Make embedding_matrix from vectors
 		self.embedding_matrix = []
-
-		if not create_v:
-			create_vectors(self.corpus_file, model_file, config, nb_channels=self.nb_channels)
-
-		for i in range(self.nb_channels):
+		for i in range(config["nb_channels"]):
 			my_dictionary = self.dictionaries[i]["word_index"]
 			embeddings_index = {}
 			vectors = open(model_file + ".word2vec" + str(i) ,'r')
-				
+			
 			for line in vectors.readlines():
 				values = line.split()
 				word = values[0]
@@ -173,7 +162,7 @@ class PreProcessing:
 	# TOKENIZE
 	# CREATE WORD INDEX DICTIONARY
 	# ----------------------------------------
-	def tokenize(self, texts, model_file, createDictionary, config):
+	def tokenize(self, model_file, createDictionary, config):
 
 		if createDictionary:
 			print("CREATE A NEW DICTIONARY")
@@ -194,13 +183,13 @@ class PreProcessing:
 				dictionaries = pickle.load(handle)
 		datas = []		
 
-		for channel, text in texts.items():
+		for channel, text in self.channel_texts.items():
 			datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
 
 			line_number = 0
 			for i, line in enumerate(text):
 				
-				words = line.split()[:config["SEQUENCE_SIZE"]]
+				words = line[:config["SEQUENCE_SIZE"]]
 				sentence_length = len(words)
 				sentence = []
 
@@ -212,7 +201,7 @@ class PreProcessing:
 							skip_word = False
 							for f in config["FILTERS"]:
 								if not f.strip(): continue
-								if any(re.match(f, texts[t][i].split()[:config["SEQUENCE_SIZE"]][j]) for t in range(self.nb_channels)):
+								if any(re.match(f, self.channel_texts[t][i][:config["SEQUENCE_SIZE"]][j]) for t in range(config["nb_channels"])):
 									skip_word = True
 									break
 							if skip_word: 

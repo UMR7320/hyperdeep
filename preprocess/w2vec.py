@@ -4,17 +4,28 @@
 import gensim
 #from gensim.models.fasttext import FastText
 import numpy as np
+import os
 
 """
 CREATE WORD VECTORS
 """
-def create_vectors(corpus_file, model_file, config, nb_channels):
+def create_vectors(texts, model_file, config):
 
-    for i in range(nb_channels):
+    for i in range(config["nb_channels"]):
         print("Create vectors for channel", i+1)
 
-        # USE GENSIM    				
-        sentences = gensim.models.word2vec.LineSentence(corpus_file + "." + str(i))
+        text_tmp_file = model_file + ".tmp"
+        f = open(text_tmp_file, "w")
+        text = "" 
+        for line in texts[i]:
+            text += " ".join(line)
+            text += "\n"
+        f.write(text)
+        f.flush()
+        f.close()
+
+        # USE GENSIM        
+        sentences = gensim.models.word2vec.LineSentence(text_tmp_file)
 
         # sg defines the training algorithm. By default (sg=0), CBOW is used. Otherwise (sg=1), skip-gram is employed.
         model = gensim.models.Word2Vec(sentences=sentences, size=config["EMBEDDING_DIM"], window=config["WINDOW_SIZE"], min_count=config["MIN_COUNT"], sg=config["SG"], workers=8)
@@ -32,6 +43,7 @@ def create_vectors(corpus_file, model_file, config, nb_channels):
             f.write(vector)
         f.flush()
         f.close()
+        os.system('rm -rf ' + text_tmp_file + "*" )
 
     """
     LOG
@@ -54,7 +66,7 @@ def get_vector(word, w2v):
 FIND MOST SIMILAR WORD
 """
 def get_most_similar(word, vectors_file):
-    w2v = get_w2v(vectors_file)
+    w2v = get_w2v(vectors_file + ".word2vec0")
     try:
         most_similar = w2v.most_similar(positive=[word])
     except:
