@@ -8,7 +8,7 @@ import sys
 import os
 import json
 
-from classifier.preprocessing import PreProcessing
+from preprocess.general import PreProcessing
 from classifier.main import train, predict
 from preprocess.w2vec import create_vectors, get_most_similar
 

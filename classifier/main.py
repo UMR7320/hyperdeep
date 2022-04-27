@@ -23,7 +23,7 @@ from analyzer.lime import LimeExplainer
 from analyzer.tds import computeTDS
 
 # Model dependencies
-from classifier.preprocessing import PreProcessing
+from preprocess.general import PreProcessing
 from classifier.models import Classifier
 
 # ------------------------------
