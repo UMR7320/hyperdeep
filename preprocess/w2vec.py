@@ -11,8 +11,11 @@ CREATE WORD VECTORS
 """
 def create_vectors(texts, model_file, config):
 
+    print('-'*50)
+    print("TRAIN WORD2VEC MODEL")
+    print('-'*50)
     for i in range(config["nb_channels"]):
-        print("Create vectors for channel", i+1)
+        print("Channel", i+1)
 
         text_tmp_file = model_file + ".tmp"
         f = open(text_tmp_file, "w")

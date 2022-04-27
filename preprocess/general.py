@@ -4,7 +4,7 @@
 Created on 27 apr. 2022
 @author: laurent.vanni@unice.fr
 '''
-import time
+import sys
 import numpy as np
 import random
 import os
@@ -35,7 +35,6 @@ class PreProcessing:
 	# ----------------------------------------
 	def loadData(self, corpus_file):   
 		
-		print("loading data...")
 		print("NB CHANNELS:", self.config["nb_channels"])
 		
 		self.corpus_file = corpus_file
@@ -47,17 +46,15 @@ class PreProcessing:
 		lines = f.readlines()
 
 		cpt = 0
-		t0 = time.time()
 		print("-"*50)
 		print("PREPROCESS SAMPLES")
 		print("-"*50)
+
 		for line in lines:
 			if "--" in line: continue
 
 			if cpt%100 == 0:
-				t1 = time.time()
-				print("sample", cpt, "/", len(lines))
-				t0 = t1
+				sys.stdout.write('%s / %s \r' % (cpt, len(lines)))
 
 			# LABELS
 			if line[:2] == "__" and line[2:8] != "PARA__":
@@ -105,8 +102,8 @@ class PreProcessing:
 
 		dictionaries, datas = self.loadIndex(forTraining)
 
-		for i, dictionary in enumerate(dictionaries):
-			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
+		for d in range(self.config["nb_channels"]):
+			print('Found %s unique tokens in channel ' % len(dictionaries[d]["word_index"]), d+1)
 
 		# Size of each dataset (train, valid, test)
 		nb_validation_samples = int(self.config["VALIDATION_SPLIT"] * datas[0].shape[0])
@@ -140,7 +137,7 @@ class PreProcessing:
 	# ----------------------------------------
 	def loadEmbeddings(self):
 
-		print("CREATE WORD2VEC VECTORS")
+		# CREATE WORD2VEC VECTORS
 		create_vectors(self.channel_texts, self.model_file, self.config)
 
 		# Make embedding_matrix from vectors

@@ -74,7 +74,7 @@ class Classifier:
 				weights=weights,
 				trainable=config["EMBEDDING_TRAINABLE"]
 			)(inputs[i])
-			print("embedding", i,  embedding[i].shape)
+			print("Embedding", i,  embedding[i].shape)
 
 			#embedding[i] = BatchNormalization()(embedding[i])
 
@@ -88,10 +88,8 @@ class Classifier:
 					except:
 						FILTER_SIZES = int(FILTER_SIZES.split("-")[i])
 
-					print("FILTER_SIZES", FILTER_SIZES)
-					
 					conv[i] = Conv1D(filters=config["NB_FILTERS"], strides=1, kernel_size=FILTER_SIZES, padding='same', kernel_initializer='normal', activation='relu')(last_layer)
-					print("conv", i,  conv[i].shape)
+					print("Conv1D", i,  conv[i].shape, "kernel size:", FILTER_SIZES)
 
 					#conv[i] = MaxPooling1D(pool_size=FILTER_SIZES, strides=1, padding='same')(conv[i])
 					#print("pool", i,  conv[i].shape)
@@ -118,7 +116,7 @@ class Classifier:
 				merged = concatenate(embedding)
 			else:
 				merged = embedding[0]
-		print("merged", merged.shape)
+		print("Late fusion layer", merged.shape)
 
 		if config["ENABLE_LSTM"]:
 
@@ -131,7 +129,7 @@ class Classifier:
 			# LSTM LAYER
 			# ----------
 			rnn = Bidirectional(GRU(config["LSTM_SIZE"], return_sequences=True, dropout=0.2, recurrent_dropout=0.2))(merged)
-			print("rnn :", rnn.shape)
+			print("RNN :", rnn.shape)
 
 			# ---------------
 			# ATTENTION LAYER
@@ -183,7 +181,7 @@ class Classifier:
 		output = Dense(config["num_classes"])(hidden_dense) #, kernel_regularizer=regularizers.l1(0.05)
 		output = Activation(output_acivation)(output)
 
-		print("output :", output.shape)
+		print("Output :", output.shape)
 
 		# -----------------
 		# COMPILE THE MODEL
@@ -195,8 +193,6 @@ class Classifier:
 		print("-"*20)
 		print("MODEL READY")
 		print("-"*20)
-
-		print("TRAINING MODEL")
 		print(model.summary())
 
 		return model

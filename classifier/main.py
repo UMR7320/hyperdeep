@@ -74,12 +74,15 @@ def train(corpus_file, model_file, config):
 	# create and get model
 	classifier = Classifier()
 	model = classifier.getModel(config=config, weight=preprocessing.embedding_matrix)
+	print("TRAIN CLASSIFIER")
+	print("-"*65)
 	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
 
 	# ------------------------------------
 	# GET EMBEDDING MODEL
 	print("-"*50)
-	print("EMBEDDING CALCULATION...")
+	print("FINAL EMBEDDING")
+	print("-"*50)
 	layer_outputs = [layer.output for layer in model.layers[len(x_train):len(x_train)*2]] 
 	embedding_model = Model(inputs=model.input, outputs=layer_outputs)
 	embedding_model.summary()
