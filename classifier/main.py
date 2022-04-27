@@ -1,26 +1,28 @@
-import random
-import numpy as np
-import time
-import math
-import json
-import operator
-import time
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+'''
+Created on 16 nov. 2017
+@author: laurent.vanni@unice.fr
+'''
 import os
-import statistics
+import numpy as np
 import platform
 
-import imageio
-import scipy.misc as smp
+# Plot for log
 import matplotlib.pyplot as plt
 
+# Deep learning librairies
 from keras.utils import plot_model
 from keras.utils import np_utils
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-from tensorflow.keras.layers import Conv1D, Conv2D, Conv2DTranspose, TimeDistributed, MaxPooling1D, Dense, Lambda, Flatten
 from tensorflow.keras.models import Model
 
+# Exaplainer librairies
 from analyzer.lime import LimeExplainer
+from analyzer.tds import computeTDS
+
+# Model dependencies
 from classifier.preprocessing import PreProcessing
 from classifier.models import Classifier
 
@@ -36,8 +38,8 @@ def plot_history(history):
 	plt.ylabel('Loss/Accuracy')
 	plt.xlabel('Epoch')
 	plt.legend(['train_loss', 'train_acc', 'val_loss', 'val_acc'], loc='upper right')
-	#plt.show()
-	plt.savefig(model_file + ".png")
+	plt.savefig(os.path.join('results', "accuracy.png"))
+	plt.show()
 
 # ------------------------------
 # TRAIN
@@ -72,9 +74,6 @@ def train(corpus_file, model_file, config):
 	classifier = Classifier()
 	model = classifier.getModel(config=config, weight=preprocessing.embedding_matrix)
 	history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=config["NUM_EPOCHS"], batch_size=config["BACH_SIZE"], callbacks=callbacks_list)
-
-	# Plot training & validation loss values
-	# plot_history(history)
 
 	# ------------------------------------
 	# GET EMBEDDING MODEL
@@ -149,156 +148,19 @@ def train(corpus_file, model_file, config):
 	print("-"*50)
 	print("TESTING")
 	print(len(y_train), len(y_val), len(y_test))
-	model = load_model(model_file)
-	
-	# SMALL TEST
-	if not len(y_test):
-		scores = model.evaluate(x_val, y_val, verbose=1)
+	model = load_model(model_file)	
+	scores = model.evaluate(x_val, y_val, verbose=1)
 
-	# LARGE TEST
-	else: 
-		scores = model.evaluate(x_test, y_test, verbose=1)
+	# ------------------------------------
+	# Plot training & validation loss values
+	if "plot" in config.keys():
+		plot_history(history)
 
-		# COMPUTE TDS ON TEST DATASET
-		predictions = dense_model.predict(x_test)[-1]
-		tds = computeTDS(config, preprocessing, model, x_test, predictions, weighted=method=="wTDS")
-
-		results = {}
-		accurracy = {}
-		nb_words = {}
-		classes = config["CLASSES"]
-		for entry in tds:
-	        
-			# PREDICTED CLASS
-			classe_value = max(entry[1])
-			classe_id = entry[1].index(classe_value) # predicted_class
-			classe_name = classes[classe_id]
-			results[classe_name] = results.get(classe_name, {})
-
-			accurracy[classe_name] = accurracy.get(classe_name, {})
-			accurracy[classe_name]["score"] = accurracy[classe_name].get("score", 0) + classe_value
-			accurracy[classe_name]["taille"] = accurracy[classe_name].get("taille", 0) + 1
-
-			for i, channel in enumerate(range(len(entry[0][0]))):
-				results[classe_name][i] = results[classe_name].get(i, 0)
-				for word in entry[0]:
-					word_str = next(iter(word[channel]))
-					word_tds = word[channel][word_str][classe_id]
-
-					#if word_tds > results[classe_name][i][-1]:
-					#	results[classe_name][i][-1] = word_tds
-					results[classe_name][i] += word_tds
-					nb_words[classe_name] = nb_words.get(classe_name, {})
-					nb_words[classe_name][i] = nb_words[classe_name].get(i, 0) + 1
-
-		for classe_name in classes:
-			try:
-				print(classe_name, accurracy[classe_name]["score"]/accurracy[classe_name]["taille"])
-				try:
-					for i, value in results[classe_name].items():
-						print(results[classe_name][i]/nb_words[classe_name][i], end="\t")
-				except:
-					print(0, end="\t")
-				print("\n" + "-"*5)
-			except:
-				print(classe_name, "no data...")
-				pass
 	return scores
 
 # ------------------------------
 # PREDICT
 # ------------------------------
-def computeTDS(config, preprocessing, classifier, x_data, predictions, weighted=False):
-
-	explainers = []
-	# get dictionnaries
-	dictionaries = preprocessing.dictionaries
-
-	# GET LAYER INDICES and weights
-	i = 0
-	conv_layers = []
-	attention_layer = []
-	dense_weights = []
-	dense_bias = []
-	for layer in classifier.layers:	
-		# CONVOLUTION layers => to compute TDS
-		if type(layer) is Conv1D:
-			conv_layers += [i+1]
-
-		# DENSE WEIGHTS layers => to compute weighted TDS
-		elif type(layer) is Dense:
-			dense_weights += [layer.get_weights()[0]]
-			dense_bias += [layer.get_weights()[1]]
-		i += 1
-
-	# Split the model to get only convultional outputs
-	layer_outputs = [layer.output for layer in classifier.layers[len(x_data):conv_layers[-1]]] 
-	conv_model = Model(inputs=classifier.input, outputs=layer_outputs)
-	conv_outputs = conv_model.predict(x_data)#[-1])
-
-	# Create an explainer for each prediction
-	for p, prediction in enumerate(predictions):
-
-		# Tds array that contain the tds scores for each word
-		explainer = []
-
-		# log
-		if p%100 == 0:
-			print("sample", p+1 , "/" , len(predictions))
-	
-		# Loop on each word
-		for w in range(config["SEQUENCE_SIZE"]):
-			
-			# GET TDS VALUES
-			word = []
-			for c in range(config["nb_channels"]):
-
-				# -----------------------------------
-				# TDS CALCULATION
-				# -----------------------------------
-				if not weighted: # OLD VERSION (TDS)	
-					tds = sum(conv_outputs[-(c+1)][p][w])
-					wtds = []
-					for classe in config["CLASSES"]:
-						wtds += [tds] # Fake wTDS => repeated TDS
-				else:
-					# NEW VERSION (wTDS)			
-					# Get conv output related to the channel c, the prediction p, the word w 
-					conv_output = conv_outputs[-(config["nb_channels"]-c)][p][w]
-					
-					# nb filters of the last conv layer (output size)
-					nb_filters = np.size(conv_outputs[-(config["nb_channels"]-c)], 2)
-
-					# Get the weight vector from the first hidden layer
-					from_i = c*nb_filters*config["SEQUENCE_SIZE"] # select the sequence
-					from_i = from_i + (w*nb_filters) # select the word
-					to_j = from_i + nb_filters # end of the vector
-					weight1 = dense_weights[0][from_i:to_j,:] # get weight vector
-
-					# Apply weight
-					vec = np.dot(conv_output, weight1)# + dense_bias[0]
-
-					# Apply relu function
-					vec2 = vec * (vec>0) # RELU
-
-					# Get the weight vector from the last hidden layer
-					weight2 = dense_weights[1]
-
-					# Apply weight
-					wtds = np.dot(vec2, weight2)# + dense_bias[1]
-					wtds = wtds.tolist()
-					
-				# ADD WORD CHANNEL TDS
-				word += [wtds]
-
-			# ADD WORD ENTRY
-			explainer += [word]	
-
-		# ADD EXPLAINER ENTRY (one for each prediction)
-		explainers.append(explainer)
-
-	return explainers
-
 def predict(text_file, model_file, config):
 
 	# ------------------------------------------
@@ -357,25 +219,26 @@ def predict(text_file, model_file, config):
 
 			# -----------------------------------------------------
 			# OUTPUT LOG : pretty print on first sample
-			fig, ax = plt.subplots()
-			index = np.arange(config["SEQUENCE_SIZE"])
-			bar_width = 1/config["nb_channels"]
-			colors = ['r', 'g', 'b']
-			words = []
-			for c in range(config["nb_channels"]):
-				tds_values = []
-				for w, word in enumerate(tds_explainers[0]): # first sample
-					if c == 0:
-						words += [preprocessing.channel_texts[c][0][w]]
-					tds_values += [tds_explainers[0][w][c][predictions_list[0][1]]]
-				plt.bar(index + bar_width*c, tds_values, bar_width, color=colors[c], label='Channel' + str(c))
+			if "plot" in config.keys():
+				fig, ax = plt.subplots()
+				index = np.arange(config["SEQUENCE_SIZE"])
+				bar_width = 1/config["nb_channels"]
+				colors = ['r', 'g', 'b']
+				words = []
+				for c in range(config["nb_channels"]):
+					tds_values = []
+					for w, word in enumerate(tds_explainers[0]): # first sample
+						if c == 0:
+							words += [preprocessing.channel_texts[c][0][w]]
+						tds_values += [tds_explainers[0][w][c][predictions_list[0][1]]]
+					plt.bar(index + bar_width*c, tds_values, bar_width, color=colors[c], label='Channel' + str(c))
 
-			plt.ylabel(method)
-			plt.title(method + " for " + predictions_list[0][0])
-			plt.xticks(index + (bar_width*config["nb_channels"])/2, words, rotation=90)
-			plt.legend()
-
-			plt.show()
+				plt.ylabel(method)
+				plt.title(method + " for " + predictions_list[0][0])
+				plt.xticks(index + (bar_width*config["nb_channels"])/2, words, rotation=90)
+				plt.legend()
+				plt.savefig(os.path.join('results', method + ".png"))
+				plt.show()
 
 		# ------------------------------------------
 		# LIME
@@ -404,18 +267,20 @@ def predict(text_file, model_file, config):
 			# OUTPUT LOG : pretty print on first sample
 			# lime_explainers[0].as_pyplot_figure()
 			# plt.tight_layout()
-			#plt.show()
-			lime_html = lime_explainers[0].as_html()
-			open("lime.html", "w").write(lime_html)
-			try:
-				print("Trying to open lime.html...")
-				if platform.system() == "Windows":
-					os.system("start lime.html")
-				else:
-					os.system("open lime.html")
-			except:
-				print("Failed.")
-				print("Open lime.html file manualy to see lime explainer")
+			# plt.savefig(os.path.join('results', method + ".png"))
+			# plt.show()
+			if "plot" in config.keys():
+				lime_html = lime_explainers[0].as_html()
+				open(os.path.join('results', "lime.html"), "w").write(lime_html)
+				try:
+					print("Trying to open lime.html...")
+					if platform.system() == "Windows":
+						os.system("start " + os.path.join('results', "lime.html"))
+					else:
+						os.system("open " + os.path.join('results', "lime.html"))
+				except:
+					print("Failed.")
+					print("Open results/lime.html file manualy to see lime explainer")
 
 	# ------------------------------------------
 	# COMPUTE RESULTS

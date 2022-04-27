@@ -49,6 +49,7 @@ if __name__ == '__main__':
     # GET CONFIG FILE
     try:
         config = json.loads(open("config.json", "r").read())
+        config["plot"] = True # to print example output (tds, wtds, lime)
     except:
         print("Error: no config file found")
         exit()
@@ -104,6 +105,7 @@ if __name__ == '__main__':
             scores = train(corpus_file, model_file, config)
 
         except:
+            raise
             print_invalidArgs_mess()
             print("The following arguments are mandatory:\n")
             print("\t-input\ttraining file path")
