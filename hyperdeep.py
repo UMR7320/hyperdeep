@@ -59,12 +59,13 @@ if __name__ == '__main__':
         try:
             args = get_args()
             corpus_file = args["-input"]
-            vectors_file = args["-output"]
+            model_file = args["-output"]
 
-            preprocessing = PreProcessing()
-            preprocessing.loadData(corpus_file, vectors_file, config)
-            preprocessing.loadEmbeddings(vectors_file, config)
+            preprocessing = PreProcessing(model_file, config)
+            preprocessing.loadData(corpus_file)
+            create_vectors(preprocessing.channel_texts, model_file, config)
         except:
+            raise
             print_invalidArgs_mess()
             print("The following arguments are mandatory:\n")
             print("\t-input\ttraining file path")
@@ -90,7 +91,7 @@ if __name__ == '__main__':
         except:
             print_invalidArgs_mess()
             print("usage: python hyperdeep.py nn <model> <word>\n")
-            print("\tmodel\ttmodel filename")
+            print("\tmodel\tmodel filename")
             print("\tword\tinput word\n")
             print_help()
             exit()
@@ -141,7 +142,6 @@ if __name__ == '__main__':
             results.close()
 
         except:
-            raise
             print_invalidArgs_mess()
             print("usage: hyperdeep predict <model> <test-data>:\n")
             print("\t<model>\tmodel file path\n")

@@ -47,11 +47,12 @@ def plot_history(history):
 def train(corpus_file, model_file, config):
 	
 	# preprocess data
-	preprocessing = PreProcessing()
-	preprocessing.loadData(corpus_file, model_file, config)
+	preprocessing = PreProcessing(model_file, config)
+	preprocessing.loadData(corpus_file)
+	preprocessing.encodeData(forTraining=True)
 	
 	if config["SG"] != -1:
-		preprocessing.loadEmbeddings(model_file, config)
+		preprocessing.loadEmbeddings()
 	else:
 		preprocessing.embedding_matrix = None
 	
@@ -170,8 +171,9 @@ def predict(text_file, model_file, config):
 
 	# ------------------------------------------
 	# Preprocess data 
-	preprocessing = PreProcessing()
-	preprocessing.loadData(text_file, model_file, config)
+	preprocessing = PreProcessing(model_file, config)
+	preprocessing.loadData(text_file)
+	preprocessing.encodeData(forTraining=False)
 
 	x_data = []
 	for channel in range(len(preprocessing.x_train)):

@@ -66,7 +66,7 @@ def get_vector(word, w2v):
 FIND MOST SIMILAR WORD
 """
 def get_most_similar(word, vectors_file):
-    w2v = get_w2v(vectors_file + ".word2vec0")
+    w2v = get_w2v(vectors_file)
     try:
         most_similar = w2v.most_similar(positive=[word])
     except:

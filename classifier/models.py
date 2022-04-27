@@ -1,3 +1,9 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+'''
+Created on 16 nov. 2017
+@author: laurent.vanni@unice.fr
+'''
 import numpy as np
 
 from keras import optimizers

@@ -22,6 +22,5 @@
 	"NORMALIZE": 0,
 	"FILTERS": [""],
 	"CLASSES": ["femme", "homme"],
-	"num_classes": 2,
 	"SOFTMAX_BREAKDOWN" : 0
 }

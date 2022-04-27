@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 '''
-Created on 16 nov. 2017
+Created on 27 apr. 2022
 @author: laurent.vanni@unice.fr
 '''
 import time
@@ -22,22 +22,26 @@ from preprocess.w2vec import create_vectors
 # ----------------------------------------
 class PreProcessing:
 
+	# ------------------------------
+	# INIT
+	# ------------------------------
+	def __init__(self, model_file, config):
+		self.model_file = model_file
+		self.config = config
+		self.num_classes = len(config["CLASSES"])
+
 	# ----------------------------------------
 	# Load data from file
 	# ----------------------------------------
-	def loadData(self, corpus_file, model_file, config):   
+	def loadData(self, corpus_file):   
 		
 		print("loading data...")
-		print("NB CHANNELS:", config["nb_channels"])
+		print("NB CHANNELS:", self.config["nb_channels"])
 		
 		self.corpus_file = corpus_file
 		self.raw_texts = []
 		self.channel_texts = {}
-
-		getLabels = False
-		createDictionary = False
-		label_dic = {}
-		labels = []
+		self.labels = []
 
 		f = open(corpus_file, "r")
 		lines = f.readlines()
@@ -58,25 +62,24 @@ class PreProcessing:
 			# LABELS
 			if line[:2] == "__" and line[2:8] != "PARA__":
 				try:
-					getLabels = True
-					createDictionary = True
 					label = line.split("__ ")[0].replace("__", "")
-					label_int = config["CLASSES"].index(label)
-					labels += [label_int]
+					label_int = self.config["CLASSES"].index(label)
+					self.labels += [label_int]
 					line = line.replace("__" + label + "__ ", "")
 				except:
+					raise
 					print("error with line:", line)
 
 			self.raw_texts += [line]
 
 			# TEXT
 			sequence = []
-			for i in range(config["nb_channels"]):
+			for i in range(self.config["nb_channels"]):
 				sequence += [[]]
 
 			for token in line.split():
 				args = token.split("**")
-				for i in range(config["nb_channels"]):
+				for i in range(self.config["nb_channels"]):
 					try:
 						if not args[i]:
 							sequence[i] += [PAD]
@@ -85,36 +88,40 @@ class PreProcessing:
 					except:
 						sequence[i] += "PAD "
 
-			for i in range(config["nb_channels"]):
+			for i in range(self.config["nb_channels"]):
 				self.channel_texts[i] = self.channel_texts.get(i, [])
 				self.channel_texts[i].append(sequence[i])
 		
 			cpt += 1
 		f.close()
 	
-		#print("DETECTED LABELS :")
-		#print(label_dic)
-		self.num_classes = len(config["CLASSES"])
+	# ---------------------------------------------
+	# Encode data : Convert data to numerical array
+	# forTraining=True : 
+	#		- create a new dictionary
+	#		- Split data (Train/Validation)
+	# ---------------------------------------------
+	def encodeData(self, forTraining=False):
 
-		dictionaries, datas = self.tokenize(model_file, createDictionary, config)
+		dictionaries, datas = self.loadIndex(forTraining)
 
 		for i, dictionary in enumerate(dictionaries):
 			print('Found %s unique tokens in channel ' % len(dictionary["word_index"]), i+1)
 
 		# Size of each dataset (train, valid, test)
-		nb_validation_samples = int(config["VALIDATION_SPLIT"] * datas[0].shape[0])
-		nb_testing_samples = nb_validation_samples + int(config["TESTING_SPLIT"] * datas[0].shape[0])
+		nb_validation_samples = int(self.config["VALIDATION_SPLIT"] * datas[0].shape[0])
+		nb_testing_samples = nb_validation_samples + int(self.config["TESTING_SPLIT"] * datas[0].shape[0])
 
 		# split the data into a training set and a validation set
 		indices = np.arange(datas[0].shape[0])		
-		if getLabels:
+		if forTraining:
 			np.random.shuffle(indices)
-			labels = np_utils.to_categorical(np.asarray(labels))
-			print('Shape of label tensor:', labels.shape)
-			labels = labels[indices]
-			self.y_val = labels[:nb_validation_samples]
-			self.y_test = labels[nb_validation_samples:nb_testing_samples]
-			self.y_train = labels[nb_testing_samples:]
+			self.labels = np_utils.to_categorical(np.asarray(self.labels))
+			print('Shape of label tensor:', self.labels.shape)
+			self.labels = self.labels[indices]
+			self.y_val = self.labels[:nb_validation_samples]
+			self.y_test = self.labels[nb_validation_samples:nb_testing_samples]
+			self.y_train = self.labels[nb_testing_samples:]
 
 		self.x_train = []
 		self.x_val = []
@@ -129,19 +136,19 @@ class PreProcessing:
 		self.dictionaries = dictionaries
 
 	# ----------------------------------------
-	# Load existing embedding
+	# Train Word2Vec embeddings
 	# ----------------------------------------
-	def loadEmbeddings(self, model_file, config):
+	def loadEmbeddings(self):
 
-		print("LOADING WORD2VEC EMBEDDING")
-		create_vectors(self.channel_texts, model_file, config)
+		print("CREATE WORD2VEC VECTORS")
+		create_vectors(self.channel_texts, self.model_file, self.config)
 
 		# Make embedding_matrix from vectors
 		self.embedding_matrix = []
-		for i in range(config["nb_channels"]):
+		for i in range(self.config["nb_channels"]):
 			my_dictionary = self.dictionaries[i]["word_index"]
 			embeddings_index = {}
-			vectors = open(model_file + ".word2vec" + str(i) ,'r')
+			vectors = open(self.model_file + ".word2vec" + str(i) ,'r')
 			
 			for line in vectors.readlines():
 				values = line.split()
@@ -150,7 +157,7 @@ class PreProcessing:
 				embeddings_index[word] = coefs
 
 			print('Found %s word vectors.' % len(embeddings_index))
-			self.embedding_matrix += [np.zeros((len(my_dictionary), config["EMBEDDING_DIM"]))]
+			self.embedding_matrix += [np.zeros((len(my_dictionary), self.config["EMBEDDING_DIM"]))]
 			for word, j in my_dictionary.items():
 				embedding_vector = embeddings_index.get(word)
 				if embedding_vector is not None:
@@ -159,12 +166,12 @@ class PreProcessing:
 			vectors.close()
 
 	# ----------------------------------------
-	# TOKENIZE
+	# LoadIndex
 	# CREATE WORD INDEX DICTIONARY
 	# ----------------------------------------
-	def tokenize(self, model_file, createDictionary, config):
+	def loadIndex(self, forTraining):
 
-		if createDictionary:
+		if forTraining:
 			print("CREATE A NEW DICTIONARY")
 			dictionaries = []
 			indexes = [1,1,1]
@@ -178,30 +185,30 @@ class PreProcessing:
 				dictionary["index_word"][1] = "__UK__" 
 				dictionaries += [dictionary]
 		else:
-			with open(model_file + ".index", 'rb') as handle:
-				print("OPEN EXISTING DICTIONARY:", model_file + ".index")
+			with open(self.model_file + ".index", 'rb') as handle:
+				print("OPEN EXISTING DICTIONARY:", self.model_file + ".index")
 				dictionaries = pickle.load(handle)
 		datas = []		
 
 		for channel, text in self.channel_texts.items():
-			datas += [(np.zeros((len(text), config["SEQUENCE_SIZE"]))).astype('int32')]	
+			datas += [(np.zeros((len(text), self.config["SEQUENCE_SIZE"]))).astype('int32')]	
 
 			line_number = 0
 			for i, line in enumerate(text):
 				
-				words = line[:config["SEQUENCE_SIZE"]]
+				words = line[:self.config["SEQUENCE_SIZE"]]
 				sentence_length = len(words)
 				sentence = []
 
 				for j, word in enumerate(words):
 					if word not in dictionaries[channel]["word_index"].keys():
-						if createDictionary:
+						if forTraining:
 							# ----------------------------
 							# SKIP WORDS
 							skip_word = False
-							for f in config["FILTERS"]:
+							for f in self.config["FILTERS"]:
 								if not f.strip(): continue
-								if any(re.match(f, self.channel_texts[t][i][:config["SEQUENCE_SIZE"]][j]) for t in range(config["nb_channels"])):
+								if any(re.match(f, self.channel_texts[t][i][:self.config["SEQUENCE_SIZE"]][j]) for t in range(config["nb_channels"])):
 									skip_word = True
 									break
 							if skip_word: 
@@ -220,15 +227,15 @@ class PreProcessing:
 					sentence.append(dictionaries[channel]["word_index"][word])
 
 				# COMPLETE WITH PAD IF LENGTH IS < SEQUENCE_SIZE
-				if sentence_length < config["SEQUENCE_SIZE"]:
-					for j in range(config["SEQUENCE_SIZE"] - sentence_length):
+				if sentence_length < self.config["SEQUENCE_SIZE"]:
+					for j in range(self.config["SEQUENCE_SIZE"] - sentence_length):
 						sentence.append(dictionaries[channel]["word_index"]["PAD"])
 				
 				datas[channel][line_number] = sentence
 				line_number += 1
 
-		if createDictionary:
-			with open(model_file + ".index", 'wb') as handle:
+		if forTraining:
+			with open(self.model_file + ".index", 'wb') as handle:
 				pickle.dump(dictionaries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		print("VOCABULARY SIZE:", len(dictionaries[0]["index_word"]))
