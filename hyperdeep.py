@@ -15,8 +15,8 @@ from preprocess.w2vec import create_vectors, get_most_similar
 def print_help():
     print("usage: python hyperdeep.py <command> <args>\n")
     print("The commands supported by deeperbase are:\n")
-    print("\tskipgram\ttrain a skipgram model")
-    print("\tnn\t\tquery for nearest neighbors\n")
+    print("\tword2vec\ttrain a word2vec model")
+    print("\tnn\tquery for nearest neighbors\n")
     print("\ttrain\ttrain a CNN model for sentence classification\n")
     print("\tpredict\tpredict most likely labels")
     
@@ -65,7 +65,6 @@ if __name__ == '__main__':
             preprocessing.loadData(corpus_file)
             create_vectors(preprocessing.channel_texts, model_file, config)
         except:
-            raise
             print_invalidArgs_mess()
             print("The following arguments are mandatory:\n")
             print("\t-input\ttraining file path")

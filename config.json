@@ -21,6 +21,6 @@
 	"LEARNING_RATE": 0.001,
 	"NORMALIZE": 0,
 	"FILTERS": [""],
-	"CLASSES": ["femme", "homme"],
+	"CLASSES": ["Melenchon", "Hamon", "Macron", "Fillon", "LePen"],
 	"SOFTMAX_BREAKDOWN" : 0
 }
